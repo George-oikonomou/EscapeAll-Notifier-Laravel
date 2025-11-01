@@ -33,8 +33,7 @@ fi
 
 
 # Skip setup if APP_KEY exists and is non-empty
-APP_KEY_VALUE=$(grep '^APP_KEY=' .env | cut -d'=' -f2)
-if [ -n "$APP_KEY_VALUE" ]; then
+if grep -q '^APP_KEY=base64:' .env; then
   echo "Existing APP_KEY detected. Skipping migrations and seeders."
 else
   echo "No APP_KEY found. Generating key and running initial setup..."

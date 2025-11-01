@@ -11,8 +11,12 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
+# ensure entrypoint.sh is executable
+RUN chmod +x /var/www/html/entrypoint.sh
+
 # install PHP + JS deps
 RUN composer install && npm install && npm run build || true
 
 EXPOSE 8000
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+ENTRYPOINT ["sh", "./entrypoint.sh"]
+
