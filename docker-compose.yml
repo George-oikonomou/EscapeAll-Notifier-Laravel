@@ -16,7 +16,7 @@ services:
             DB_DATABASE: EscapeAll-Notifier-db
             DB_USERNAME: Escaper
             DB_PASSWORD: apedrasant
-
+        command: ./entrypoint.sh
 
     db:
         image: mysql:8.0
