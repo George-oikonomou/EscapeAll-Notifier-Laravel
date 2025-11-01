@@ -1,7 +1,7 @@
 services:
     app:
         build: .
-        container_name: escapeall_app
+        container_name: EscapeAll-Notifier
         restart: always
         volumes:
             - .:/var/www/html
@@ -13,20 +13,20 @@ services:
             DB_CONNECTION: mysql
             DB_HOST: db
             DB_PORT: 3306
-            DB_DATABASE: laravel
-            DB_USERNAME: laravel
-            DB_PASSWORD: secret
+            DB_DATABASE: EscapeAll-Notifier-db
+            DB_USERNAME: Escaper
+            DB_PASSWORD: apedrasant
         command: ./entrypoint.sh
 
     db:
         image: mysql:8.0
-        container_name: escapeall_db
+        container_name: EscapeAll-Notifier-db
         restart: always
         environment:
-            MYSQL_DATABASE: laravel
-            MYSQL_USER: laravel
-            MYSQL_PASSWORD: secret
-            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: EscapeAll-Notifier-db
+            MYSQL_USER: Escaper
+            MYSQL_PASSWORD: apedrasant
+            MYSQL_ROOT_PASSWORD: apedrasant
         ports:
             - "3309:3306"
         volumes:
