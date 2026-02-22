@@ -22,6 +22,9 @@ package-lock.json
 /.nova
 /.vscode
 /.zed
-/node
-node/automation/*
-!node/automation/fetch-allRooms.js
+/node/automation/node_modules
+/node/automation/*.json
+!/node/automation/package.json
+!/node/automation/package-lock.json
+/node/automation/*.html
+/node/scripts/node_modules

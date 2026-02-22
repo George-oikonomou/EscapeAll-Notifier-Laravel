@@ -1,0 +1,16 @@
+{
+    "name": "automation",
+    "version": "1.0.0",
+    "private": true,
+    "main": "fetch-escapeall.js",
+    "scripts": {
+        "start": "node fetch-escapeall.js",
+        "start:escapeall": "node fetch-escapeall.js",
+        "start:rooms": "node fetch-allRooms.js"
+    },
+    "dependencies": {
+        "playwright": "^1.56.1",
+        "playwright-extra": "^4.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2"
+    }
+}
