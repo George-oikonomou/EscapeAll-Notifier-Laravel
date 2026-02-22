@@ -28,6 +28,7 @@ jobs:
       - name: Scrape room detail pages
         working-directory: node/scripts
         env:
+          NODE_PATH: ../automation/node_modules
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
