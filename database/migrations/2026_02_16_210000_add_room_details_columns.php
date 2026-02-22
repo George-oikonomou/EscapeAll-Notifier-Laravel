@@ -12,17 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            $table->string('slug')->nullable()->after('provider');
-            $table->text('short_description')->nullable()->after('slug');
-            $table->text('description')->nullable()->after('short_description');
-            $table->float('rating')->nullable()->after('description');
-            $table->unsignedInteger('reviews_count')->nullable()->after('rating');
-            $table->unsignedInteger('duration_minutes')->nullable()->after('reviews_count');
-            $table->unsignedInteger('min_players')->nullable()->after('duration_minutes');
-            $table->unsignedInteger('max_players')->nullable()->after('min_players');
-            $table->float('escape_rate')->nullable()->after('max_players');
-            $table->string('image_url')->nullable()->after('escape_rate');
-            $table->json('categories')->nullable()->after('image_url');
+            $table->string('slug')->nullable();
+            $table->text('short_description')->nullable();
+            $table->text('description')->nullable();
+            $table->float('rating')->nullable();
+            $table->unsignedInteger('reviews_count')->nullable();
+            $table->unsignedInteger('duration_minutes')->nullable();
+            $table->unsignedInteger('min_players')->nullable();
+            $table->unsignedInteger('max_players')->nullable();
+            $table->float('escape_rate')->nullable();
+            $table->string('image_url')->nullable();
+            $table->json('categories')->nullable();
         });
     }
 

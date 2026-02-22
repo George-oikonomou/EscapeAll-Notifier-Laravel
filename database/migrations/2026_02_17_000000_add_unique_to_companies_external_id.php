@@ -3,17 +3,15 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Only add unique constraint if it doesn't already exist
-        $indexExists = collect(DB::select("SHOW INDEX FROM companies WHERE Key_name = 'companies_external_id_unique'"))
-            ->isNotEmpty();
-
-        if (!$indexExists) {
+        // The unique constraint is already defined in the original migration
+        // This migration is kept for compatibility but does nothing if index exists
+        // Laravel's schema builder handles this cross-database
+        if (!$this->indexExists('companies', 'companies_external_id_unique')) {
             Schema::table('companies', function (Blueprint $table) {
                 $table->unique('external_id');
             });
@@ -26,4 +24,31 @@ return new class extends Migration
             $table->dropUnique(['external_id']);
         });
     }
+
+    /**
+     * Check if an index exists (cross-database compatible)
+     */
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $connection = Schema::getConnection();
+        $driver = $connection->getDriverName();
+
+        if ($driver === 'pgsql') {
+            $result = $connection->select(
+                "SELECT 1 FROM pg_indexes WHERE tablename = ? AND indexname = ?",
+                [$table, $indexName]
+            );
+        } elseif ($driver === 'mysql' || $driver === 'mariadb') {
+            $result = $connection->select(
+                "SHOW INDEX FROM {$table} WHERE Key_name = ?",
+                [$indexName]
+            );
+        } else {
+            // SQLite or other - just try to add and catch exception
+            return false;
+        }
+
+        return count($result) > 0;
+    }
 };
+

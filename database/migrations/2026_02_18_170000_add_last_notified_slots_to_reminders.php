@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reminders', function (Blueprint $table) {
-            $table->json('last_notified_slots')->nullable()->after('notified');
+            $table->json('last_notified_slots')->nullable();
         });
     }
 

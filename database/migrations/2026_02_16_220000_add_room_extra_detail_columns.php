@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('rooms', function (Blueprint $table) {
-            $table->float('difficulty')->nullable()->after('escape_rate');
-            $table->json('languages')->nullable()->after('difficulty');
-            $table->string('video_url', 500)->nullable()->after('languages');
+            $table->float('difficulty')->nullable();
+            $table->json('languages')->nullable();
+            $table->string('video_url', 500)->nullable();
         });
     }
 
