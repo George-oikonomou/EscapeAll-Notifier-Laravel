@@ -96,7 +96,7 @@ a[href*="register"] {
 button[type="submit"],
 .inline-flex.items-center.px-4 {
     background: var(--ea-accent) !important;
-    color: #0b1020 !important;
+    color: #fff !important;
     border: none !important;
     border-radius: 12px !important;
     font-weight: 700 !important;
@@ -131,4 +131,13 @@ nav a:hover { color: #fff !important; }
 .bg-red-600 {
     background: #ef4444 !important;
     border-radius: 12px !important;
+}
+
+/* ─── Mobile responsiveness for guest layout (login/register) ─── */
+@media (max-width: 640px) {
+    .min-h-screen > div > div:last-child,
+    .sm\:max-w-md {
+        margin: 1rem;
+        border-radius: 16px !important;
+    }
 }

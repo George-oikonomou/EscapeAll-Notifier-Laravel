@@ -93,8 +93,9 @@
 
         .results-count{
             color:var(--muted); font-size:.85rem;
-            padding:.5rem .8rem; border-radius:10px;
-            background:rgba(0,0,0,.2);
+            padding:.35rem .7rem; border-radius:20px;
+            background:transparent;
+            white-space:nowrap;
         }
 
         /* Cards Grid */
@@ -264,12 +265,29 @@
         @keyframes spin{to{transform:rotate(360deg)}}
 
         @media(max-width:768px){
-            .container{padding:1.25rem 1rem}
-            .topnav{padding:.8rem 1rem; gap:1rem; flex-wrap:wrap}
-            .controls{flex-direction:column}
+            .container{padding:1rem .75rem}
+            .topnav{padding:.6rem 1rem; gap:.6rem; flex-wrap:wrap}
+            .topnav .brand{font-size:1rem}
+            .topnav a{font-size:.82rem}
+            .controls{flex-direction:column; padding:1rem; gap:.75rem}
             .search-box{min-width:100%}
+            .filter-group{width:100%}
+            .filter-select{flex:1}
             .cards-grid{grid-template-columns:1fr}
-            .global-search{width:100%}
+            .global-search{width:100%; order:10}
+            .page-title{font-size:1.6rem !important}
+            .page-subtitle{font-size:.88rem}
+            .filter-chips{padding:.75rem; gap:.35rem}
+            .filter-chip{font-size:.75rem; padding:.3rem .6rem}
+            .card-image{height:160px}
+        }
+        @media(max-width:480px){
+            .topnav{padding:.5rem .75rem; gap:.5rem}
+            .container{padding:.75rem .5rem}
+            .controls{padding:.75rem}
+            .card-body{padding:.9rem}
+            .card-stats{gap:.4rem}
+            .card-stat{font-size:.72rem; padding:.15rem .35rem}
         }
     </style>
 </head>

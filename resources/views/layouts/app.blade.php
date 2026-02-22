@@ -129,6 +129,21 @@
             .shadow{box-shadow:0 4px 20px rgba(0,0,0,.3) !important}
             .text-gray-800{color:var(--text) !important}
             .text-gray-600{color:var(--muted) !important}
+
+            /* ─── Mobile responsive (authenticated layout) ─── */
+            @media(max-width:768px){
+                .ea-topnav{padding:.6rem 1rem; gap:.6rem; flex-wrap:wrap}
+                .ea-topnav .brand{font-size:1rem}
+                .ea-topnav a{font-size:.82rem}
+                .ea-topnav .user-name{font-size:.8rem}
+                .ea-topnav .logout-btn{font-size:.78rem; padding:.3rem .6rem}
+                .global-search{width:100%; order:10}
+                .ea-container{padding:1.25rem 1rem}
+            }
+            @media(max-width:480px){
+                .ea-topnav{padding:.5rem .75rem; gap:.5rem}
+                .ea-container{padding:.75rem .5rem}
+            }
         </style>
     </head>
     <body>

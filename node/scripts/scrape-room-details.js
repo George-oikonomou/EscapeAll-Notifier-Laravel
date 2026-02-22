@@ -198,7 +198,8 @@ function parseDetailHtml(html, slug) {
                     detail.external_id = external_id;
                     results.push(detail);
                     success++;
-                    console.error(`  ✓ [${success + failed}/${rooms.length}] ${slug}`);
+                    const descPreview = detail.description ? detail.description.substring(0, 80) + (detail.description.length > 80 ? '...' : '') : '(no description)';
+                    console.error(`  ✓ [${success + failed}/${rooms.length}] ${slug} | ${descPreview}`);
                 } catch (err) {
                     console.error(`  ✗ [${success + failed + 1}/${rooms.length}] ${slug} → ${err.message}`);
                     failed++;

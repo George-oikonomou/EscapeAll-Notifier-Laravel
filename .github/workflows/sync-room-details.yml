@@ -36,5 +36,5 @@ jobs:
             webhookUrl="${WEBHOOK_URL}/api/webhook/sync-room-details" \
             webhookSecret="${WEBHOOK_SECRET}" \
             delayMs=2000 \
-            waveSize=15 \
+            waveSize=25 \
             cooldownSec=30
