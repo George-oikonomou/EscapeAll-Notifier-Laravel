@@ -35,6 +35,6 @@
         </form>
     @else
         <a href="{{ route('login') }}" style="padding:.3rem .7rem;border-radius:8px;font-size:.85rem;border:1px solid var(--glass-border)">Log in</a>
-        <a href="{{ route('register') }}" style="padding:.3rem .7rem;border-radius:8px;font-size:.85rem;background:var(--accent);color:#0b1020;font-weight:600;border:1px solid transparent">Register</a>
+        <a href="{{ route('register') }}" style="padding:.3rem .7rem;border-radius:8px;font-size:.85rem;background:var(--accent);color:#fff !important;font-weight:600;border:1px solid transparent">Register</a>
     @endauth
 </nav>
