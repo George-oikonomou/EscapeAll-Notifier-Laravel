@@ -148,7 +148,7 @@ function sleep(ms) {
         console.error(`\n[sync-avail] Finished scraping. ${Object.keys(allResults).length} rooms have data.`);
 
         // ── 4) POST accumulated results to webhook in chunks ──
-        const POST_CHUNK_SIZE = 50; // rooms per POST request
+        const POST_CHUNK_SIZE = 20; // rooms per POST request (keep payloads ≤~10 MB)
         const fromDate = new Date().toISOString().split('T')[0];
         const allExtIdKeys = Object.keys(allResults);
 
@@ -163,6 +163,7 @@ function sleep(ms) {
         console.error(`[sync-avail] Sending ${postChunks.length} chunks (${POST_CHUNK_SIZE} rooms each) to ${WEBHOOK_URL}...`);
 
         let anyFailed = false;
+        const MAX_RETRIES = 3;
 
         for (let ci = 0; ci < postChunks.length; ci++) {
             const payload = {
@@ -174,29 +175,36 @@ function sleep(ms) {
             const sizeMB = (payloadStr.length / (1024 * 1024)).toFixed(1);
             console.error(`  Chunk ${ci + 1}/${postChunks.length} (${Object.keys(postChunks[ci]).length} rooms, ${sizeMB} MB)...`);
 
-            try {
-                const res = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Webhook-Secret': WEBHOOK_SECRET,
-                    },
-                    body: payloadStr,
-                });
+            let chunkOk = false;
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    const res = await fetch(WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Webhook-Secret': WEBHOOK_SECRET,
+                        },
+                        body: payloadStr,
+                    });
 
-                const body = await res.text();
+                    const body = await res.text();
 
-                if (!res.ok) {
-                    console.error(`    ✗ Chunk ${ci + 1} failed: ${res.status} ${body}`);
-                    anyFailed = true;
-                } else {
-                    console.error(`    ✓ Chunk ${ci + 1} OK: ${body.substring(0, 200)}`);
+                    if (!res.ok) {
+                        console.error(`    ✗ Chunk ${ci + 1} attempt ${attempt}/${MAX_RETRIES} failed: ${res.status} ${body.substring(0, 200)}`);
+                        if (attempt < MAX_RETRIES) await sleep(attempt * 3000);
+                    } else {
+                        console.error(`    ✓ Chunk ${ci + 1} OK: ${body.substring(0, 200)}`);
+                        chunkOk = true;
+                        break;
+                    }
+                } catch (err) {
+                    console.error(`    ✗ Chunk ${ci + 1} attempt ${attempt}/${MAX_RETRIES} fetch error: ${err.message}`);
+                    if (attempt < MAX_RETRIES) await sleep(attempt * 3000);
                 }
-            } catch (err) {
-                console.error(`    ✗ Chunk ${ci + 1} fetch error: ${err.message}`);
-                anyFailed = true;
             }
+
+            if (!chunkOk) anyFailed = true;
         }
 
         if (anyFailed) {
