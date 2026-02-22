@@ -3,8 +3,7 @@
  *
  * Fetches room availability from the EscapeAll API.
  * Launches Playwright once to grab cookies, then makes API calls
- * from within the browser context using XMLHttpRequest (which the
- * server recognises as a valid AJAX request).
+ * from within the browser context using fetch with AJAX-style headers.
  *
  * Usage:
  *   node fetch-availability-fast.js \
@@ -66,6 +65,13 @@ function formatApiDate(dateStr) {
         await page.goto('https://www.escapeall.gr', { waitUntil: 'networkidle', timeout: 30000 });
         await page.waitForTimeout(2000);
 
+        // Log the cookies we got (for debugging)
+        const cookies = await ctx.cookies();
+        console.error(`[fetch-avail] Got ${cookies.length} cookies: ${cookies.map(c => c.name).join(', ')}`);
+
+        // Log the page URL to confirm we're on the right site
+        console.error(`[fetch-avail] Current page URL: ${page.url()}`);
+
         const results = {};
 
         const apiFrom  = formatApiDate(FROM_DATE);
@@ -85,41 +91,52 @@ function formatApiDate(dateStr) {
                     `&noGifts=${NO_GIFTS}` +
                     `&language=${LANGUAGE}`;
 
-                // Use XMLHttpRequest inside the browser context.
-                // This sends proper AJAX headers (X-Requested-With, Referer, Origin)
-                // which the server requires. A plain fetch() or page.goto() navigation
-                // doesn't set these, causing the server to return 404.
+                console.error(`[fetch-avail] DEBUG URL: ${url}`);
+
+                // Use fetch inside the page context with all required AJAX headers.
+                // The request runs from within the browser on escapeall.gr origin,
+                // so cookies are sent automatically by the browser.
                 const res = await page.evaluate(async ({ fetchUrl }) => {
-                    return new Promise((resolve) => {
-                        const xhr = new XMLHttpRequest();
-                        xhr.open('GET', fetchUrl, true);
-                        xhr.setRequestHeader('Accept', 'application/json');
-                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                        xhr.onreadystatechange = function () {
-                            if (xhr.readyState === 4) {
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    try {
-                                        resolve(JSON.parse(xhr.responseText));
-                                    } catch (e) {
-                                        resolve({ error: 'parse_error' });
-                                    }
-                                } else {
-                                    resolve({ error: xhr.status });
-                                }
-                            }
+                    try {
+                        const r = await fetch(fetchUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json, text/plain, */*',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                        });
+                        const text = await r.text();
+                        return {
+                            status: r.status,
+                            statusText: r.statusText,
+                            bodyPreview: text.substring(0, 500),
+                            bodyFull: text,
+                            url: r.url,
                         };
-                        xhr.onerror = function () {
-                            resolve({ error: 'network_error' });
-                        };
-                        xhr.send();
-                    });
+                    } catch (e) {
+                        return { error: e.message };
+                    }
                 }, { fetchUrl: url });
 
-                if (res && !res.error) {
-                    results[serviceId] = res;
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(res) ? res.length : '?'} days`);
+                console.error(`[fetch-avail] DEBUG response status=${res.status} statusText=${res.statusText}`);
+                console.error(`[fetch-avail] DEBUG response url=${res.url}`);
+                console.error(`[fetch-avail] DEBUG body preview: ${res.bodyPreview?.substring(0, 300)}`);
+
+                if (res.error) {
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: fetch error: ${res.error}`);
+                    results[serviceId] = [];
+                } else if (res.status >= 200 && res.status < 300) {
+                    try {
+                        const data = JSON.parse(res.bodyFull);
+                        results[serviceId] = data;
+                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(data) ? data.length : '?'} days`);
+                    } catch (e) {
+                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: JSON parse error`);
+                        results[serviceId] = [];
+                    }
                 } else {
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: error ${res?.error || 'unknown'}`);
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: HTTP ${res.status} ${res.statusText}`);
                     results[serviceId] = [];
                 }
             } catch (err) {
