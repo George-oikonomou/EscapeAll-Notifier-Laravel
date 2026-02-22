@@ -542,4 +542,84 @@ class WebhookController extends Controller
 
         return ['created' => count($toCreate), 'deleted' => $deleted];
     }
+
+    /**
+     * Return room slugs + external IDs for the detail page scraper.
+     * GET /api/webhook/room-slugs
+     */
+    public function roomSlugs(): JsonResponse
+    {
+        $rooms = Room::whereNotNull('slug')
+            ->where('slug', '!=', '')
+            ->whereNotNull('external_id')
+            ->where('external_id', '!=', '')
+            ->select('external_id', 'slug')
+            ->get()
+            ->map(fn ($r) => [
+                'external_id' => $r->external_id,
+                'slug'        => $r->slug,
+            ])
+            ->values();
+
+        return response()->json(['rooms' => $rooms]);
+    }
+
+    /**
+     * Receive room detail enrichment data from GitHub Actions and update rooms.
+     *
+     * Expected payload: { "details": [ { "external_id": "...", "slug": "...", "description": "...", ... }, ... ] }
+     */
+    public function syncRoomDetails(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'details' => 'required|array',
+        ]);
+
+        $details = $data['details'];
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($details as $detail) {
+            $extId = $detail['external_id'] ?? null;
+            if (! $extId) {
+                $skipped++;
+                continue;
+            }
+
+            $room = Room::where('external_id', $extId)->first();
+            if (! $room) {
+                $skipped++;
+                continue;
+            }
+
+            $updateData = [];
+
+            if (! empty($detail['description'])) {
+                $updateData['description'] = $detail['description'];
+            }
+            if ($detail['difficulty'] !== null && $detail['difficulty'] !== false) {
+                $updateData['difficulty'] = $detail['difficulty'];
+            }
+            if (! empty($detail['languages'])) {
+                $updateData['languages'] = $detail['languages'];
+            }
+            if (! empty($detail['video_url'])) {
+                $updateData['video_url'] = $detail['video_url'];
+            }
+
+            if (! empty($updateData)) {
+                $room->update($updateData);
+                $updated++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        return response()->json([
+            'status'  => 'ok',
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'total'   => count($details),
+        ]);
+    }
 }

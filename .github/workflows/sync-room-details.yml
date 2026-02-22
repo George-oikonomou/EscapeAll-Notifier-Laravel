@@ -1,0 +1,39 @@
+name: Sync Room Details (Nightly)
+
+on:
+  schedule:
+    # Run every night at 2:00 AM UTC (4:00 AM Greece / 5:00 AM Greece DST)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync-room-details:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install automation dependencies
+        working-directory: node/automation
+        run: npm install
+
+      - name: Install Playwright Chromium
+        working-directory: node/automation
+        run: npx playwright install chromium
+
+      - name: Scrape room detail pages
+        working-directory: node/scripts
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
+          node scrape-room-details.js \
+            webhookUrl="${WEBHOOK_URL}/api/webhook/sync-room-details" \
+            webhookSecret="${WEBHOOK_SECRET}" \
+            delayMs=2000 \
+            waveSize=15 \
+            cooldownSec=30

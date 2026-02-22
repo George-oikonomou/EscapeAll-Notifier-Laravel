@@ -25,4 +25,8 @@ Route::middleware('webhook.secret')->prefix('webhook')->group(function () {
     // Notification flow: get rooms with reminders, then POST scraped availability to trigger emails
     Route::get('/reminder-room-ids', [WebhookController::class, 'reminderRoomIds']);
     Route::post('/notify-availability', [WebhookController::class, 'notifyAvailability']);
+
+    // Room details enrichment (nightly sync)
+    Route::get('/room-slugs', [WebhookController::class, 'roomSlugs']);
+    Route::post('/sync-room-details', [WebhookController::class, 'syncRoomDetails']);
 });
