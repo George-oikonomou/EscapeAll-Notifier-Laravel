@@ -968,7 +968,7 @@ async function toggleReminder(roomId) {
         slotsWrap.classList.add('open');
     }
 
-    // ── Refresh from EscapeAll ──
+    // ── Refresh via GitHub Actions ──
     const refreshBtn    = document.getElementById('cal-refresh-btn');
     const progressWrap  = document.getElementById('cal-progress-wrap');
     const progressFill  = document.getElementById('cal-progress-fill');
@@ -985,9 +985,9 @@ async function toggleReminder(roomId) {
         isRefreshing = true;
         refreshBtn.classList.add('spinning');
         refreshBtn.disabled = true;
-        progressFill.style.width = '0%';
-        progressPct.textContent = '0%';
-        progressMsg.textContent = 'Preparing...';
+        progressFill.style.width = '10%';
+        progressPct.textContent = '';
+        progressMsg.textContent = 'Dispatching refresh...';
         progressWrap.classList.add('active');
 
         try {
@@ -995,68 +995,76 @@ async function toggleReminder(roomId) {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'text/event-stream',
+                    'Accept': 'application/json',
                 },
             });
 
-            const reader = res.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
+            const data = await res.json();
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+            if (res.ok && data.status === 'dispatched') {
+                progressFill.style.width = '25%';
+                progressMsg.textContent = '🚀 ' + data.message;
+                progressPct.textContent = '';
 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop(); // keep incomplete line
+                // Take a snapshot of current slot count for this month
+                const key = monthKey();
+                const currentData = cache[key] || {};
+                const currentCount = Object.values(currentData).reduce((sum, arr) => sum + arr.length, 0);
 
-                let currentEvent = null;
-                for (const line of lines) {
-                    if (line.startsWith('event: ')) {
-                        currentEvent = line.slice(7).trim();
-                    } else if (line.startsWith('data: ') && currentEvent) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            handleEvent(currentEvent, data);
-                        } catch (e) {}
-                        currentEvent = null;
+                // Poll for changes every 15s for up to 3 minutes
+                let polls = 0;
+                const maxPolls = 12;
+                const pollInterval = setInterval(async () => {
+                    polls++;
+                    const pct = 25 + Math.round((polls / maxPolls) * 65);
+                    progressFill.style.width = pct + '%';
+                    progressMsg.textContent = `Waiting for data... (${polls * 15}s)`;
+
+                    // Clear cache and re-fetch current month
+                    delete cache[key];
+                    const freshData = await fetchMonth(key);
+                    const freshCount = Object.values(freshData).reduce((sum, arr) => sum + arr.length, 0);
+
+                    if (freshCount !== currentCount || polls >= maxPolls) {
+                        clearInterval(pollInterval);
+                        progressFill.style.width = '100%';
+
+                        if (freshCount !== currentCount) {
+                            const diff = freshCount - currentCount;
+                            progressMsg.textContent = `✓ Availability updated! (${diff > 0 ? '+' : ''}${diff} slots)`;
+                        } else {
+                            progressMsg.textContent = polls >= maxPolls
+                                ? '⏳ Refresh may still be running. Calendar will show changes on next page load.'
+                                : '✓ No changes found';
+                        }
+
+                        // Reload calendar
+                        selectedDate = null;
+                        slotsWrap.classList.remove('open');
+                        renderMonth();
+
+                        refreshBtn.classList.remove('spinning');
+                        refreshBtn.disabled = false;
+                        isRefreshing = false;
+
+                        setTimeout(() => progressWrap.classList.remove('active'), 5000);
                     }
-                }
+                }, 15000);
+            } else {
+                progressMsg.textContent = '⚠ ' + (data.error || 'Failed to dispatch');
+                progressPct.textContent = '⚠';
+                refreshBtn.classList.remove('spinning');
+                refreshBtn.disabled = false;
+                isRefreshing = false;
+                setTimeout(() => progressWrap.classList.remove('active'), 5000);
             }
         } catch (e) {
-            progressMsg.textContent = 'Error: ' + e.message;
+            progressMsg.textContent = '⚠ Error: ' + e.message;
             progressPct.textContent = '⚠';
-        }
-
-        refreshBtn.classList.remove('spinning');
-        refreshBtn.disabled = false;
-        isRefreshing = false;
-
-        // Auto-hide progress bar after 4s
-        setTimeout(() => {
-            progressWrap.classList.remove('active');
-        }, 4000);
-    }
-
-    function handleEvent(event, data) {
-        if (event === 'progress') {
-            const pct = data.progress || 0;
-            progressFill.style.width = pct + '%';
-            progressPct.textContent = pct + '%';
-            progressMsg.textContent = data.message || '';
-
-            if (data.step === 'done') {
-                progressMsg.textContent = `✓ ${data.total} slots synced (${data.created} new, ${data.deleted} removed)`;
-                // Clear cache and reload calendar
-                Object.keys(cache).forEach(k => delete cache[k]);
-                selectedDate = null;
-                slotsWrap.classList.remove('open');
-                renderMonth();
-            }
-        } else if (event === 'error') {
-            progressMsg.textContent = '⚠ ' + (data.message || 'Failed');
-            progressPct.textContent = '⚠';
+            refreshBtn.classList.remove('spinning');
+            refreshBtn.disabled = false;
+            isRefreshing = false;
+            setTimeout(() => progressWrap.classList.remove('active'), 5000);
         }
     }
 

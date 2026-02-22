@@ -39,4 +39,9 @@ return [
         'secret' => env('WEBHOOK_SECRET'),
     ],
 
+    'github' => [
+        'token' => env('GITHUB_TOKEN'),
+        'repo'  => env('GITHUB_REPO'),
+    ],
+
 ];
