@@ -514,9 +514,18 @@ class WebhookController extends Controller
         // Delete ALL existing availability records for this room
         $deleted = RoomAvailability::where('room_id', $room->id)->delete();
 
+        // Deduplicate slots by date+time to avoid unique constraint violations
+        $uniqueSlots = [];
+        foreach ($newSlots as $slot) {
+            $key = $slot['date'] . '|' . $slot['time'];
+            if (! isset($uniqueSlots[$key])) {
+                $uniqueSlots[$key] = $slot;
+            }
+        }
+
         // Bulk-insert fresh data
         $toCreate = [];
-        foreach ($newSlots as $slot) {
+        foreach ($uniqueSlots as $slot) {
             $toCreate[] = [
                 'room_id'        => $room->id,
                 'available_date' => $slot['date'],
