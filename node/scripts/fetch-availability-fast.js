@@ -2,7 +2,8 @@
  * fetch-availability-fast.js
  *
  * Fetches room availability from the EscapeAll API.
- * Launches Playwright once to grab cookies, then makes sequential API calls.
+ * Launches Playwright once to grab cookies, then uses Playwright's
+ * APIRequestContext (which inherits the browser session) for API calls.
  *
  * Usage:
  *   node fetch-availability-fast.js \
@@ -59,14 +60,10 @@ function formatApiDate(dateStr) {
     const page = await ctx.newPage();
 
     try {
-        // Load homepage to get cookies
+        // Load homepage to establish session cookies
         console.error('[fetch-avail] Loading homepage for cookies...');
         await page.goto('https://www.escapeall.gr', { waitUntil: 'networkidle', timeout: 30000 });
         await page.waitForTimeout(2000);
-
-        // Extract cookies for fetch calls
-        const cookies = await ctx.cookies();
-        const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
         const results = {};
 
@@ -87,22 +84,28 @@ function formatApiDate(dateStr) {
                     `&noGifts=${NO_GIFTS}` +
                     `&language=${LANGUAGE}`;
 
-                const res = await page.evaluate(async ({ fetchUrl, cookie }) => {
-                    const r = await fetch(fetchUrl, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Cookie': cookie,
-                        },
-                    });
-                    if (!r.ok) return { error: r.status };
-                    return await r.json();
-                }, { fetchUrl: url, cookie: cookieStr });
+                // Use page.goto to navigate to the API URL directly - this
+                // ensures the browser sends all session cookies, Referer,
+                // Origin, and other headers the server expects.
+                const response = await page.goto(url, {
+                    waitUntil: 'load',
+                    timeout: 30000,
+                });
 
-                if (res && !res.error) {
-                    results[serviceId] = res;
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(res) ? res.length : '?'} days`);
+                const status = response.status();
+
+                if (status >= 200 && status < 300) {
+                    const bodyText = await page.evaluate(() => document.body.innerText);
+                    try {
+                        const data = JSON.parse(bodyText);
+                        results[serviceId] = data;
+                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(data) ? data.length : '?'} days`);
+                    } catch (parseErr) {
+                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: JSON parse error`);
+                        results[serviceId] = [];
+                    }
                 } else {
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: error ${res?.error || 'unknown'}`);
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: HTTP ${status}`);
                     results[serviceId] = [];
                 }
             } catch (err) {
