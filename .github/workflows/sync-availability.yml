@@ -1,0 +1,44 @@
+name: Sync Room Availability
+
+on:
+  schedule:
+    # 01:00 UTC = 03:00 EET (Greek time)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install automation dependencies
+        working-directory: node/automation
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: node/automation
+        run: npx playwright install chromium --with-deps
+
+      - name: Run availability sync orchestrator
+        working-directory: node/scripts
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          NODE_PATH: ${{ github.workspace }}/node/automation/node_modules
+        run: |
+          node sync-availability-webhook.js \
+            webhookUrl="${WEBHOOK_URL}/api/webhook/sync-availability" \
+            roomIdsUrl="${WEBHOOK_URL}/api/webhook/room-ids" \
+            webhookSecret="${WEBHOOK_SECRET}" \
+            months=10 \
+            batchSize=50 \
+            delayMs=1500
