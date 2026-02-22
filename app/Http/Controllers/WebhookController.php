@@ -9,6 +9,7 @@ use App\Models\Reminder;
 use App\Models\Room;
 use App\Models\RoomAvailability;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -300,6 +301,12 @@ class WebhookController extends Controller
                     ->where('available_date', '>=', $fromDate)
                     ->delete();
                 $totalDeleted += $deleted;
+
+                // Mark refresh as completed even for empty rooms
+                Cache::put("room:{$room->id}:refresh_completed", now()->timestamp, 600);
+                Cache::put("room:{$room->id}:refresh_result", [
+                    'slots' => 0, 'created' => 0, 'deleted' => $deleted,
+                ], 600);
                 continue;
             }
 
@@ -317,6 +324,14 @@ class WebhookController extends Controller
             $syncResult    = $this->syncRoomAvailabilities($room, $slots);
             $totalCreated += $syncResult['created'];
             $totalDeleted += $syncResult['deleted'];
+
+            // Mark refresh as completed for this room (used by frontend polling)
+            Cache::put("room:{$room->id}:refresh_completed", now()->timestamp, 600);
+            Cache::put("room:{$room->id}:refresh_result", [
+                'slots' => count($slots),
+                'created' => $syncResult['created'],
+                'deleted' => $syncResult['deleted'],
+            ], 600);
         }
 
         return response()->json([

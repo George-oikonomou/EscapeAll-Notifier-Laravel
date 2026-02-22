@@ -1004,68 +1004,61 @@ async function toggleReminder(roomId) {
             if (res.ok && data.status === 'dispatched') {
                 progressFill.style.width = '25%';
                 progressMsg.textContent = '🚀 ' + data.message;
-                progressPct.textContent = '';
 
-                // Take a snapshot of current slot count for this month
-                const key = monthKey();
-                const currentData = cache[key] || {};
-                const currentCount = Object.values(currentData).reduce((sum, arr) => sum + arr.length, 0);
-
-                // Poll for changes every 15s for up to 3 minutes
+                // Poll the status endpoint every 10s for up to 3 minutes
                 let polls = 0;
-                const maxPolls = 12;
+                const maxPolls = 18;
                 const pollInterval = setInterval(async () => {
                     polls++;
                     const pct = 25 + Math.round((polls / maxPolls) * 65);
-                    progressFill.style.width = pct + '%';
-                    progressMsg.textContent = `Waiting for data... (${polls * 15}s)`;
+                    progressFill.style.width = Math.min(pct, 90) + '%';
+                    progressMsg.textContent = `Waiting for GitHub Action to complete... (${polls * 10}s)`;
 
-                    // Clear cache and re-fetch current month
-                    delete cache[key];
-                    const freshData = await fetchMonth(key);
-                    const freshCount = Object.values(freshData).reduce((sum, arr) => sum + arr.length, 0);
+                    try {
+                        const statusRes = await fetch(`/rooms/${ROOM_ID}/refresh-status`);
+                        const statusData = await statusRes.json();
 
-                    if (freshCount !== currentCount || polls >= maxPolls) {
-                        clearInterval(pollInterval);
-                        progressFill.style.width = '100%';
+                        if (statusData.status === 'completed') {
+                            clearInterval(pollInterval);
+                            progressFill.style.width = '100%';
 
-                        if (freshCount !== currentCount) {
-                            const diff = freshCount - currentCount;
-                            progressMsg.textContent = `✓ Availability updated! (${diff > 0 ? '+' : ''}${diff} slots)`;
-                        } else {
-                            progressMsg.textContent = polls >= maxPolls
-                                ? '⏳ Refresh may still be running. Calendar will show changes on next page load.'
-                                : '✓ No changes found';
+                            const r = statusData.result || {};
+                            progressMsg.textContent = `✓ Done! ${r.slots || 0} slots synced (${r.created || 0} new, ${r.deleted || 0} removed)`;
+
+                            // Clear cache and reload calendar
+                            Object.keys(cache).forEach(k => delete cache[k]);
+                            selectedDate = null;
+                            slotsWrap.classList.remove('open');
+                            renderMonth();
+
+                            finishRefresh();
+                        } else if (polls >= maxPolls) {
+                            clearInterval(pollInterval);
+                            progressFill.style.width = '100%';
+                            progressMsg.textContent = '⏳ Refresh may still be running. Reload the page in a minute to see changes.';
+                            finishRefresh();
                         }
-
-                        // Reload calendar
-                        selectedDate = null;
-                        slotsWrap.classList.remove('open');
-                        renderMonth();
-
-                        refreshBtn.classList.remove('spinning');
-                        refreshBtn.disabled = false;
-                        isRefreshing = false;
-
-                        setTimeout(() => progressWrap.classList.remove('active'), 5000);
+                    } catch (e) {
+                        // Polling error, keep trying
                     }
-                }, 15000);
+                }, 10000);
             } else {
                 progressMsg.textContent = '⚠ ' + (data.error || 'Failed to dispatch');
                 progressPct.textContent = '⚠';
-                refreshBtn.classList.remove('spinning');
-                refreshBtn.disabled = false;
-                isRefreshing = false;
-                setTimeout(() => progressWrap.classList.remove('active'), 5000);
+                finishRefresh();
             }
         } catch (e) {
             progressMsg.textContent = '⚠ Error: ' + e.message;
             progressPct.textContent = '⚠';
-            refreshBtn.classList.remove('spinning');
-            refreshBtn.disabled = false;
-            isRefreshing = false;
-            setTimeout(() => progressWrap.classList.remove('active'), 5000);
+            finishRefresh();
         }
+    }
+
+    function finishRefresh() {
+        refreshBtn.classList.remove('spinning');
+        refreshBtn.disabled = false;
+        isRefreshing = false;
+        setTimeout(() => progressWrap.classList.remove('active'), 5000);
     }
 
     // Initial render

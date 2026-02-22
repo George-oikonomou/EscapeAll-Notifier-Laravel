@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Room;
 use App\Models\RoomAvailability;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RoomController extends Controller
 {
@@ -51,7 +51,6 @@ class RoomController extends Controller
 
     /**
      * Trigger a GitHub Actions workflow to refresh availability for this room.
-     * The workflow will scrape EscapeAll and POST the results back to our webhook.
      * POST /rooms/{room}/refresh-availability
      */
     public function refreshAvailability(Room $room)
@@ -79,6 +78,10 @@ class RoomController extends Controller
                 ]);
 
             if ($response->status() === 204) {
+                // Store dispatch time so we can track completion
+                Cache::put("room:{$room->id}:refresh_dispatched", now()->timestamp, 600);
+                Cache::forget("room:{$room->id}:refresh_completed");
+
                 return response()->json([
                     'status'  => 'dispatched',
                     'message' => 'Refresh started! Availability will update in ~1-2 minutes.',
@@ -94,5 +97,28 @@ class RoomController extends Controller
                 'error' => 'Failed to trigger refresh: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Check the status of a room availability refresh.
+     * GET /rooms/{room}/refresh-status
+     */
+    public function refreshStatus(Room $room)
+    {
+        $dispatched = Cache::get("room:{$room->id}:refresh_dispatched");
+        $completed  = Cache::get("room:{$room->id}:refresh_completed");
+
+        if (! $dispatched) {
+            return response()->json(['status' => 'idle']);
+        }
+
+        if ($completed && $completed >= $dispatched) {
+            return response()->json([
+                'status' => 'completed',
+                'result' => Cache::get("room:{$room->id}:refresh_result", []),
+            ]);
+        }
+
+        return response()->json(['status' => 'pending']);
     }
 }

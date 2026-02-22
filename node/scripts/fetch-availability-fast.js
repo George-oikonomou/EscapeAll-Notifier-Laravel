@@ -87,7 +87,7 @@ function formatApiDate(dateStr) {
                     `&noGifts=${NO_GIFTS}` +
                     `&language=${LANGUAGE}`;
 
-                const res = await page.evaluate(async (fetchUrl, cookie) => {
+                const res = await page.evaluate(async ({ fetchUrl, cookie }) => {
                     const r = await fetch(fetchUrl, {
                         headers: {
                             'Accept': 'application/json',
@@ -96,7 +96,7 @@ function formatApiDate(dateStr) {
                     });
                     if (!r.ok) return { error: r.status };
                     return await r.json();
-                }, url, cookieStr);
+                }, { fetchUrl: url, cookie: cookieStr });
 
                 if (res && !res.error) {
                     results[serviceId] = res;

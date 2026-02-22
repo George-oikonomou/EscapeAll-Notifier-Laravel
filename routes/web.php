@@ -15,6 +15,7 @@ Route::get('/search', [SearchController::class, 'search'])->name('search');
 Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 Route::get('/rooms/{room}/availability', [RoomController::class, 'availability'])->name('rooms.availability');
 Route::post('/rooms/{room}/refresh-availability', [RoomController::class, 'refreshAvailability'])->name('rooms.refresh-availability');
+Route::get('/rooms/{room}/refresh-status', [RoomController::class, 'refreshStatus'])->name('rooms.refresh-status');
 Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
 Route::get('/companies/{company}', [CompanyController::class, 'show'])->name('companies.show');
 
