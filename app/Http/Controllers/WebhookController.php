@@ -552,7 +552,6 @@ class WebhookController extends Controller
         $rooms = Room::whereNotNull('slug')
             ->where('slug', '!=', '')
             ->whereNotNull('external_id')
-            ->where('external_id', '!=', '')
             ->select('external_id', 'slug')
             ->get()
             ->map(fn ($r) => [
