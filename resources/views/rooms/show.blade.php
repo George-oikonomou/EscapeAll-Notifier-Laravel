@@ -1023,15 +1023,11 @@ async function toggleReminder(roomId) {
                             progressFill.style.width = '100%';
 
                             const r = statusData.result || {};
-                            progressMsg.textContent = `✓ Done! ${r.slots || 0} slots synced (${r.created || 0} new, ${r.deleted || 0} removed)`;
+                            progressMsg.textContent = `✓ Done! ${r.slots || 0} slots synced (${r.created || 0} new, ${r.deleted || 0} removed). Reloading...`;
 
-                            // Clear cache and reload calendar
-                            Object.keys(cache).forEach(k => delete cache[k]);
-                            selectedDate = null;
-                            slotsWrap.classList.remove('open');
-                            renderMonth();
-
-                            finishRefresh();
+                            // Reload the page after a short delay to show updated data
+                            setTimeout(() => window.location.reload(), 1500);
+                            return;
                         } else if (polls >= maxPolls) {
                             clearInterval(pollInterval);
                             progressFill.style.width = '100%';

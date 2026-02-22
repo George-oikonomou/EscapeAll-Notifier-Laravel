@@ -43,4 +43,4 @@ jobs:
             webhookUrl="${WEBHOOK_URL}/api/webhook/sync-availability" \
             webhookSecret="${WEBHOOK_SECRET}" \
             serviceId="${{ inputs.room_external_id }}" \
-            months=10
+            months=12

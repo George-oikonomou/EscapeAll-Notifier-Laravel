@@ -296,9 +296,8 @@ class WebhookController extends Controller
 
             if (empty($slots)) {
                 $roomsEmpty++;
-                // Delete future availabilities since nothing is available
+                // Delete ALL availabilities since the scrape returned nothing
                 $deleted = RoomAvailability::where('room_id', $room->id)
-                    ->where('available_date', '>=', $fromDate)
                     ->delete();
                 $totalDeleted += $deleted;
 
@@ -508,64 +507,31 @@ class WebhookController extends Controller
     }
 
     /**
-     * Sync availabilities for a room — creates new, deletes removed.
+     * Sync availabilities for a room — deletes ALL existing and replaces with fresh data.
      */
     private function syncRoomAvailabilities(Room $room, array $newSlots): array
     {
-        $created = 0;
-        $deleted = 0;
+        // Delete ALL existing availability records for this room
+        $deleted = RoomAvailability::where('room_id', $room->id)->delete();
 
-        // Build lookup
-        $newKeys = [];
-        foreach ($newSlots as $slot) {
-            $newKeys[$slot['date'] . '|' . $slot['time']] = $slot;
-        }
-
-        // Date range from slots
-        $dates   = array_column($newSlots, 'date');
-        $minDate = min($dates);
-        $maxDate = max($dates);
-
-        // Existing records in range
-        $existing = RoomAvailability::where('room_id', $room->id)
-            ->whereBetween('available_date', [$minDate, $maxDate])
-            ->get();
-
-        $existingKeys = [];
-        foreach ($existing as $record) {
-            $key                = $record->available_date->format('Y-m-d') . '|' . $record->available_time;
-            $existingKeys[$key] = $record;
-        }
-
-        // Delete removed
-        foreach ($existingKeys as $key => $record) {
-            if (! isset($newKeys[$key])) {
-                $record->delete();
-                $deleted++;
-            }
-        }
-
-        // Create new
+        // Bulk-insert fresh data
         $toCreate = [];
-        foreach ($newKeys as $key => $slot) {
-            if (! isset($existingKeys[$key])) {
-                $toCreate[] = [
-                    'room_id'        => $room->id,
-                    'available_date' => $slot['date'],
-                    'available_time' => $slot['time'],
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ];
-            }
+        foreach ($newSlots as $slot) {
+            $toCreate[] = [
+                'room_id'        => $room->id,
+                'available_date' => $slot['date'],
+                'available_time' => $slot['time'],
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ];
         }
 
         if (! empty($toCreate)) {
             foreach (array_chunk($toCreate, 100) as $chunk) {
                 RoomAvailability::insert($chunk);
             }
-            $created = count($toCreate);
         }
 
-        return ['created' => $created, 'deleted' => $deleted];
+        return ['created' => count($toCreate), 'deleted' => $deleted];
     }
 }
