@@ -17,6 +17,12 @@ RUN chmod +x /var/www/html/entrypoint.sh
 # install PHP + JS deps
 RUN composer install && npm install && npm run build || true
 
+# install node/scripts deps and Playwright with ALL system dependencies
+RUN cd node/scripts && npm install && npx playwright install --with-deps chromium || true
+
+# install node/automation deps and Playwright with ALL system dependencies
+RUN cd node/automation && npm install && npx playwright install --with-deps chromium || true
+
 EXPOSE 8000
 ENTRYPOINT ["sh", "./entrypoint.sh"]
 

@@ -43,8 +43,15 @@ else
   echo "Initial setup complete."
 fi
 
+# Ensure Playwright browsers are installed (check if chromium exists)
+if [ ! -d "/root/.cache/ms-playwright" ] || [ -z "$(ls -A /root/.cache/ms-playwright 2>/dev/null)" ]; then
+  echo "Installing Playwright browsers..."
+  cd node/scripts && npx playwright install --with-deps chromium
+  cd /var/www/html
+else
+  echo "Playwright browsers already installed."
+fi
 
-
-
-# start Laravel dev server
-exec php artisan serve --host=0.0.0.0 --port=8000
+# start Laravel dev server with multiple workers for concurrent request handling
+# --no-reload is required for PHP_CLI_SERVER_WORKERS to work
+PHP_CLI_SERVER_WORKERS=4 exec php artisan serve --host=0.0.0.0 --port=8000 --no-reload

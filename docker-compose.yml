@@ -7,6 +7,7 @@ services:
             - .:/var/www/html
             - /var/www/html/vendor
             - /var/www/html/node_modules
+            - playwright_cache:/root/.cache/ms-playwright
 
         ports:
             - "8000:8000"
@@ -36,3 +37,4 @@ services:
 
 volumes:
     db_data:
+    playwright_cache:
