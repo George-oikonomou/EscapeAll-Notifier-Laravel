@@ -1,0 +1,11 @@
+{
+  "name": "escapeall-automation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright-based scrapers for EscapeAll",
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
