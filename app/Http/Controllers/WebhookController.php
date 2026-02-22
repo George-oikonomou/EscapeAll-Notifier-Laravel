@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewSlotsAvailableMail;
 use App\Models\Company;
 use App\Models\Municipality;
+use App\Models\Reminder;
 use App\Models\Room;
 use App\Models\RoomAvailability;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class WebhookController extends Controller
 {
@@ -337,6 +340,121 @@ class WebhookController extends Controller
             ->values();
 
         return response()->json(['room_ids' => $ids]);
+    }
+
+    /**
+     * Return external IDs of rooms that have at least one active reminder.
+     * Used by the notify-availability GitHub Actions workflow.
+     */
+    public function reminderRoomIds(): JsonResponse
+    {
+        $roomIds = Reminder::distinct()->pluck('room_id');
+
+        $extIds = Room::whereIn('id', $roomIds)
+            ->whereNotNull('external_id')
+            ->where('external_id', '!=', '')
+            ->pluck('external_id')
+            ->values();
+
+        return response()->json(['room_ids' => $extIds]);
+    }
+
+    /**
+     * Receive scraped availability for rooms with reminders.
+     * Compares against DB to find NEW slots, emails users, then syncs DB.
+     *
+     * Expected payload: { "results": { "extId": [ {...day...}, ... ], ... } }
+     */
+    public function notifyAvailability(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'results' => 'required|array',
+        ]);
+
+        $results = $data['results'];
+        $today       = now()->startOfDay();
+        $threeMonths = now()->addMonths(3)->endOfDay();
+
+        // Load rooms with matching external IDs
+        $extIds       = array_keys($results);
+        $roomsByExtId = Room::with('company')
+            ->whereIn('external_id', $extIds)
+            ->get()
+            ->keyBy('external_id');
+
+        $totalEmails   = 0;
+        $totalNewSlots = 0;
+        $roomsProcessed = 0;
+
+        foreach ($extIds as $extId) {
+            $room = $roomsByExtId[$extId] ?? null;
+            if (! $room) {
+                continue;
+            }
+
+            $roomsProcessed++;
+            $days  = $results[$extId];
+            $scrapedSlots = $this->extractSlots(is_array($days) ? $days : []);
+
+            // ── Get existing slots from DB (the previous snapshot) ──
+            $existingKeys = RoomAvailability::where('room_id', $room->id)
+                ->whereBetween('available_date', [$today->toDateString(), $threeMonths->toDateString()])
+                ->get()
+                ->mapWithKeys(fn ($a) => [
+                    $a->available_date->format('Y-m-d') . '|' . substr($a->available_time, 0, 5) => true,
+                ])
+                ->toArray();
+
+            // ── Find NEW slots ──
+            $newSlots = [];
+            foreach ($scrapedSlots as $slot) {
+                $key = $slot['date'] . '|' . $slot['time'];
+                if (! isset($existingKeys[$key])) {
+                    $newSlots[] = $slot;
+                }
+            }
+
+            $totalNewSlots += count($newSlots);
+
+            // ── Notify users with reminders on this room ──
+            if (! empty($newSlots)) {
+                $reminders = Reminder::with('user')->where('room_id', $room->id)->get();
+
+                foreach ($reminders as $reminder) {
+                    $user = $reminder->user;
+                    if (! $user) {
+                        continue;
+                    }
+
+                    try {
+                        Mail::to($user->email)->send(
+                            new NewSlotsAvailableMail($room, $newSlots, $user)
+                        );
+                        $totalEmails++;
+                    } catch (\Throwable $e) {
+                        // Log but don't fail the whole request
+                        report($e);
+                    }
+                }
+            }
+
+            // ── Sync fresh data into room_availabilities ──
+            if (! empty($scrapedSlots)) {
+                $this->syncRoomAvailabilities($room, $scrapedSlots);
+            } else {
+                // Delete future availabilities since nothing is available
+                RoomAvailability::where('room_id', $room->id)
+                    ->where('available_date', '>=', $today->toDateString())
+                    ->delete();
+            }
+        }
+
+        return response()->json([
+            'status'          => 'ok',
+            'rooms_processed' => $roomsProcessed,
+            'new_slots'       => $totalNewSlots,
+            'emails_sent'     => $totalEmails,
+        ]);
     }
 
     // ──────────────────────────────────────────────────────────────

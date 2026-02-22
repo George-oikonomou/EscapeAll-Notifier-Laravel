@@ -21,4 +21,8 @@ Route::middleware('webhook.secret')->prefix('webhook')->group(function () {
 
     // Lightweight endpoint to list room external IDs (used by availability orchestrator)
     Route::get('/room-ids', [WebhookController::class, 'roomIds']);
+
+    // Notification flow: get rooms with reminders, then POST scraped availability to trigger emails
+    Route::get('/reminder-room-ids', [WebhookController::class, 'reminderRoomIds']);
+    Route::post('/notify-availability', [WebhookController::class, 'notifyAvailability']);
 });
