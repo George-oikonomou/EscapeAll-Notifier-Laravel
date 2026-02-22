@@ -3,7 +3,7 @@
  *
  * Fetches room availability from the EscapeAll API.
  * Launches Playwright once to grab cookies, then makes API calls
- * from within the browser context using fetch with AJAX-style headers.
+ * from within the browser context using fetch.
  *
  * Usage:
  *   node fetch-availability-fast.js \
@@ -40,13 +40,13 @@ function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
 
-/* ── Format date for API ─────────────────────────────────────────── */
+/* ── Format date for API (YYYY-M-D, no zero-padding) ────────────── */
 function formatApiDate(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     const day   = d.getDate();
     const month = d.getMonth() + 1;
     const year  = d.getFullYear();
-    return `${month}/${day}/${year}`;
+    return `${year}-${month}-${day}`;
 }
 
 (async () => {
@@ -65,13 +65,6 @@ function formatApiDate(dateStr) {
         await page.goto('https://www.escapeall.gr', { waitUntil: 'networkidle', timeout: 30000 });
         await page.waitForTimeout(2000);
 
-        // Log the cookies we got (for debugging)
-        const cookies = await ctx.cookies();
-        console.error(`[fetch-avail] Got ${cookies.length} cookies: ${cookies.map(c => c.name).join(', ')}`);
-
-        // Log the page URL to confirm we're on the right site
-        console.error(`[fetch-avail] Current page URL: ${page.url()}`);
-
         const results = {};
 
         const apiFrom  = formatApiDate(FROM_DATE);
@@ -82,20 +75,17 @@ function formatApiDate(dateStr) {
         for (let i = 0; i < SERVICE_IDS.length; i++) {
             const serviceId = SERVICE_IDS[i];
             try {
-                const url = `https://www.escapeall.gr/api/Reservation/` +
-                    `GetAvailabilityForServiceBetweenDates?` +
-                    `serviceId=${serviceId}` +
-                    `&from=${encodeURIComponent(apiFrom)}` +
-                    `&to=${encodeURIComponent(apiUntil)}` +
+                // Correct API endpoint: /api/Reservation
+                // Params: from (YYYY-M-D), until (YYYY-M-D), ServiceId, bookedBy, language, noGifts, queueToken
+                const url = `https://www.escapeall.gr/api/Reservation?` +
+                    `from=${apiFrom}` +
+                    `&until=${apiUntil}` +
+                    `&ServiceId=${serviceId}` +
                     `&bookedBy=${BOOKED_BY}` +
+                    `&language=${LANGUAGE}` +
                     `&noGifts=${NO_GIFTS}` +
-                    `&language=${LANGUAGE}`;
+                    `&queueToken=`;
 
-                console.error(`[fetch-avail] DEBUG URL: ${url}`);
-
-                // Use fetch inside the page context with all required AJAX headers.
-                // The request runs from within the browser on escapeall.gr origin,
-                // so cookies are sent automatically by the browser.
                 const res = await page.evaluate(async ({ fetchUrl }) => {
                     try {
                         const r = await fetch(fetchUrl, {
@@ -106,37 +96,22 @@ function formatApiDate(dateStr) {
                             },
                             credentials: 'same-origin',
                         });
-                        const text = await r.text();
-                        return {
-                            status: r.status,
-                            statusText: r.statusText,
-                            bodyPreview: text.substring(0, 500),
-                            bodyFull: text,
-                            url: r.url,
-                        };
+                        if (!r.ok) {
+                            const text = await r.text();
+                            return { error: r.status, body: text.substring(0, 200) };
+                        }
+                        return { data: await r.json(), status: r.status };
                     } catch (e) {
                         return { error: e.message };
                     }
                 }, { fetchUrl: url });
 
-                console.error(`[fetch-avail] DEBUG response status=${res.status} statusText=${res.statusText}`);
-                console.error(`[fetch-avail] DEBUG response url=${res.url}`);
-                console.error(`[fetch-avail] DEBUG body preview: ${res.bodyPreview?.substring(0, 300)}`);
-
-                if (res.error) {
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: fetch error: ${res.error}`);
-                    results[serviceId] = [];
-                } else if (res.status >= 200 && res.status < 300) {
-                    try {
-                        const data = JSON.parse(res.bodyFull);
-                        results[serviceId] = data;
-                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(data) ? data.length : '?'} days`);
-                    } catch (e) {
-                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: JSON parse error`);
-                        results[serviceId] = [];
-                    }
+                if (res.data) {
+                    results[serviceId] = res.data;
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(res.data) ? res.data.length : '?'} days`);
                 } else {
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: HTTP ${res.status} ${res.statusText}`);
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: error ${res.error}`);
+                    if (res.body) console.error(`    Response body: ${res.body}`);
                     results[serviceId] = [];
                 }
             } catch (err) {
