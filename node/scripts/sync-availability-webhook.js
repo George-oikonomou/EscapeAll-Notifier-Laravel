@@ -147,32 +147,63 @@ function sleep(ms) {
 
         console.error(`\n[sync-avail] Finished scraping. ${Object.keys(allResults).length} rooms have data.`);
 
-        // ── 4) POST accumulated results to webhook ──
+        // ── 4) POST accumulated results to webhook in chunks ──
+        const POST_CHUNK_SIZE = 50; // rooms per POST request
         const fromDate = new Date().toISOString().split('T')[0];
-        const payload = {
-            results: allResults,
-            from: fromDate,
-        };
+        const allExtIdKeys = Object.keys(allResults);
 
-        const payloadStr = JSON.stringify(payload);
-        const sizeMB = (payloadStr.length / (1024 * 1024)).toFixed(1);
-        console.error(`[sync-avail] POSTing ${sizeMB} MB to ${WEBHOOK_URL}...`);
+        const postChunks = [];
+        for (let i = 0; i < allExtIdKeys.length; i += POST_CHUNK_SIZE) {
+            const keys = allExtIdKeys.slice(i, i + POST_CHUNK_SIZE);
+            const chunkResults = {};
+            for (const k of keys) chunkResults[k] = allResults[k];
+            postChunks.push(chunkResults);
+        }
 
-        const res = await fetch(WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Webhook-Secret': WEBHOOK_SECRET,
-            },
-            body: payloadStr,
-        });
+        console.error(`[sync-avail] Sending ${postChunks.length} chunks (${POST_CHUNK_SIZE} rooms each) to ${WEBHOOK_URL}...`);
 
-        const body = await res.text();
-        console.error(`[sync-avail] Response ${res.status}: ${body}`);
+        let anyFailed = false;
 
-        if (!res.ok) {
+        for (let ci = 0; ci < postChunks.length; ci++) {
+            const payload = {
+                results: postChunks[ci],
+                from: fromDate,
+            };
+
+            const payloadStr = JSON.stringify(payload);
+            const sizeMB = (payloadStr.length / (1024 * 1024)).toFixed(1);
+            console.error(`  Chunk ${ci + 1}/${postChunks.length} (${Object.keys(postChunks[ci]).length} rooms, ${sizeMB} MB)...`);
+
+            try {
+                const res = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Webhook-Secret': WEBHOOK_SECRET,
+                    },
+                    body: payloadStr,
+                });
+
+                const body = await res.text();
+
+                if (!res.ok) {
+                    console.error(`    ✗ Chunk ${ci + 1} failed: ${res.status} ${body}`);
+                    anyFailed = true;
+                } else {
+                    console.error(`    ✓ Chunk ${ci + 1} OK: ${body.substring(0, 200)}`);
+                }
+            } catch (err) {
+                console.error(`    ✗ Chunk ${ci + 1} fetch error: ${err.message}`);
+                anyFailed = true;
+            }
+        }
+
+        if (anyFailed) {
+            console.error('[sync-avail] Some chunks failed!');
             process.exitCode = 1;
+        } else {
+            console.error(`[sync-avail] All ${postChunks.length} chunks sent successfully.`);
         }
     } catch (err) {
         console.error(`[sync-avail] Fatal error: ${err.message}`);
