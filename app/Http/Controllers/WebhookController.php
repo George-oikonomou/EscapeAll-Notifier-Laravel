@@ -366,7 +366,6 @@ class WebhookController extends Controller
 
         $extIds = Room::whereIn('id', $roomIds)
             ->whereNotNull('external_id')
-            ->where('external_id', '!=', '')
             ->pluck('external_id')
             ->values();
 
