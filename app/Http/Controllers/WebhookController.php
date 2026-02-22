@@ -349,7 +349,7 @@ class WebhookController extends Controller
     public function roomIds(): JsonResponse
     {
         $ids = Room::whereNotNull('external_id')
-GIT             ->pluck('external_id')
+            ->pluck('external_id')
             ->values();
 
         return response()->json(['room_ids' => $ids]);
