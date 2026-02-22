@@ -22,7 +22,7 @@ jobs:
 
       - name: Install automation dependencies
         working-directory: node/automation
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright Chromium
         working-directory: node/automation
