@@ -1,12 +1,134 @@
-@import 'tailwindcss';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source "../**/*.blade.php";
-@source "../**/*.js";
-@source "../**/*.vue";
+/* ═══════════════════════════════════════════════
+   EscapeAll — Dark Glassmorphism Theme Override
+   Applied globally to all Breeze views
+   ═══════════════════════════════════════════════ */
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+:root {
+    --ea-bg-1: #0b1020;
+    --ea-bg-2: #0a0f1c;
+    --ea-bg-3: #050814;
+    --ea-glass: rgba(13, 18, 30, .55);
+    --ea-glass-border: rgba(255, 255, 255, .08);
+    --ea-text: #e5e7eb;
+    --ea-muted: #9ca3af;
+    --ea-accent: #60a5fa;
+    --ea-accent2: #a78bfa;
+}
+
+/* ─── Global body ─── */
+body {
+    color: var(--ea-text) !important;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+    background:
+        radial-gradient(80% 60% at 20% 10%, rgba(96, 165, 250, .10), transparent 60%),
+        radial-gradient(60% 70% at 80% 0%, rgba(167, 139, 250, .12), transparent 65%),
+        radial-gradient(100% 80% at 50% 100%, rgba(34, 211, 238, .09), transparent 60%),
+        linear-gradient(180deg, var(--ea-bg-1), var(--ea-bg-2) 50%, var(--ea-bg-3)) !important;
+    background-attachment: fixed !important;
+}
+
+/* ─── Guest layout (login / register) ─── */
+.min-h-screen { background: transparent !important; }
+
+/* Main card wrapper */
+.min-h-screen > div > div:last-child,
+.sm\:max-w-md {
+    background: var(--ea-glass) !important;
+    border: 1px solid var(--ea-glass-border) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .05) !important;
+    border-radius: 22px !important;
+}
+
+/* ─── Typography overrides ─── */
+.text-gray-900, .text-gray-800, .text-gray-700 { color: var(--ea-text) !important; }
+.text-gray-600, .text-gray-500, .text-gray-400 { color: var(--ea-muted) !important; }
+
+/* ─── Form inputs ─── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+    background: rgba(0, 0, 0, .3) !important;
+    border: 1px solid var(--ea-glass-border) !important;
+    color: var(--ea-text) !important;
+    border-radius: 12px !important;
+    font-family: inherit !important;
+    transition: border-color .2s !important;
+}
+input:focus, textarea:focus, select:focus {
+    border-color: var(--ea-accent) !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, .15) !important;
+    --tw-ring-color: transparent !important;
+    outline: none !important;
+}
+
+/* ─── Checkbox ─── */
+input[type="checkbox"] {
+    background: rgba(0, 0, 0, .3) !important;
+    border: 1px solid var(--ea-glass-border) !important;
+    border-radius: 4px !important;
+}
+input[type="checkbox"]:checked {
+    background-color: var(--ea-accent) !important;
+    border-color: var(--ea-accent) !important;
+}
+
+/* ─── Labels ─── */
+label { color: var(--ea-muted) !important; }
+
+/* ─── Links ─── */
+a.underline,
+.text-indigo-600,
+a[href*="password"],
+a[href*="login"],
+a[href*="register"] {
+    color: var(--ea-accent) !important;
+}
+
+/* ─── Primary button ─── */
+button[type="submit"],
+.inline-flex.items-center.px-4 {
+    background: var(--ea-accent) !important;
+    color: #0b1020 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    transition: transform .2s, box-shadow .2s !important;
+}
+button[type="submit"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(96, 165, 250, .3) !important;
+}
+
+/* ─── Error messages ─── */
+.text-red-600 { color: #f87171 !important; }
+
+/* ─── Authenticated nav (profile, dashboard) ─── */
+nav { background: rgba(5, 8, 20, .85) !important; border-color: var(--ea-glass-border) !important; }
+nav a { color: var(--ea-muted) !important; }
+nav a:hover { color: #fff !important; }
+.bg-white { background: var(--ea-glass) !important; border: 1px solid var(--ea-glass-border) !important; }
+.shadow { box-shadow: 0 4px 20px rgba(0, 0, 0, .3) !important; }
+
+/* ─── Profile page cards ─── */
+.bg-gray-100 { background: transparent !important; }
+.sm\:rounded-lg { border-radius: 18px !important; }
+.max-w-7xl { color: var(--ea-text); }
+.space-y-6 > div {
+    background: var(--ea-glass) !important;
+    border: 1px solid var(--ea-glass-border) !important;
+    border-radius: 18px !important;
+}
+
+/* ─── Danger button (delete account) ─── */
+.bg-red-600 {
+    background: #ef4444 !important;
+    border-radius: 12px !important;
 }
