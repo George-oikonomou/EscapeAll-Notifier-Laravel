@@ -2,8 +2,9 @@
  * fetch-availability-fast.js
  *
  * Fetches room availability from the EscapeAll API.
- * Launches Playwright once to grab cookies, then uses Playwright's
- * APIRequestContext (which inherits the browser session) for API calls.
+ * Launches Playwright once to grab cookies, then makes API calls
+ * from within the browser context using XMLHttpRequest (which the
+ * server recognises as a valid AJAX request).
  *
  * Usage:
  *   node fetch-availability-fast.js \
@@ -84,28 +85,41 @@ function formatApiDate(dateStr) {
                     `&noGifts=${NO_GIFTS}` +
                     `&language=${LANGUAGE}`;
 
-                // Use page.goto to navigate to the API URL directly - this
-                // ensures the browser sends all session cookies, Referer,
-                // Origin, and other headers the server expects.
-                const response = await page.goto(url, {
-                    waitUntil: 'load',
-                    timeout: 30000,
-                });
+                // Use XMLHttpRequest inside the browser context.
+                // This sends proper AJAX headers (X-Requested-With, Referer, Origin)
+                // which the server requires. A plain fetch() or page.goto() navigation
+                // doesn't set these, causing the server to return 404.
+                const res = await page.evaluate(async ({ fetchUrl }) => {
+                    return new Promise((resolve) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', fetchUrl, true);
+                        xhr.setRequestHeader('Accept', 'application/json');
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState === 4) {
+                                if (xhr.status >= 200 && xhr.status < 300) {
+                                    try {
+                                        resolve(JSON.parse(xhr.responseText));
+                                    } catch (e) {
+                                        resolve({ error: 'parse_error' });
+                                    }
+                                } else {
+                                    resolve({ error: xhr.status });
+                                }
+                            }
+                        };
+                        xhr.onerror = function () {
+                            resolve({ error: 'network_error' });
+                        };
+                        xhr.send();
+                    });
+                }, { fetchUrl: url });
 
-                const status = response.status();
-
-                if (status >= 200 && status < 300) {
-                    const bodyText = await page.evaluate(() => document.body.innerText);
-                    try {
-                        const data = JSON.parse(bodyText);
-                        results[serviceId] = data;
-                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(data) ? data.length : '?'} days`);
-                    } catch (parseErr) {
-                        console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: JSON parse error`);
-                        results[serviceId] = [];
-                    }
+                if (res && !res.error) {
+                    results[serviceId] = res;
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: ${Array.isArray(res) ? res.length : '?'} days`);
                 } else {
-                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: HTTP ${status}`);
+                    console.error(`  [${i + 1}/${SERVICE_IDS.length}] ${serviceId}: error ${res?.error || 'unknown'}`);
                     results[serviceId] = [];
                 }
             } catch (err) {
