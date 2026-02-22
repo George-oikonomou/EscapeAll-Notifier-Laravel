@@ -71,7 +71,7 @@ class RoomController extends Controller
             $response = Http::withToken($githubToken)
                 ->withHeaders(['Accept' => 'application/vnd.github.v3+json'])
                 ->post("https://api.github.com/repos/{$githubRepo}/actions/workflows/refresh-room-availability.yml/dispatches", [
-                    'ref'    => 'main',
+                    'ref'    => 'master',
                     'inputs' => [
                         'room_external_id' => $room->external_id,
                         'room_title'       => $room->title ?? 'Unknown Room',
