@@ -494,9 +494,21 @@ class WebhookController extends Controller
                 }
 
                 preg_match('/\b(\d{1,2})[:\.](\d{2})\b/', $slot['Name'] ?? '', $m);
-                if (! empty($m[1]) && ! empty($m[2])) {
-                    $time    = str_pad($m[1], 2, '0', STR_PAD_LEFT) . ':' . $m[2];
-                    $slots[] = ['date' => $date, 'time' => $time];
+                if (! empty($m[1]) && isset($m[2])) {
+                    $hour   = (int) $m[1];
+                    $minute = (int) $m[2];
+
+                    // PostgreSQL TIME does not accept hours >= 24; roll over to next day(s)
+                    if ($hour >= 24) {
+                        $extraDays = intdiv($hour, 24);
+                        $hour      = $hour % 24;
+                        $slotDate  = (new \DateTime($date))->modify("+{$extraDays} day")->format('Y-m-d');
+                    } else {
+                        $slotDate = $date;
+                    }
+
+                    $time    = str_pad($hour, 2, '0', STR_PAD_LEFT) . ':' . str_pad($minute, 2, '0', STR_PAD_LEFT);
+                    $slots[] = ['date' => $slotDate, 'time' => $time];
                 }
             }
         }
