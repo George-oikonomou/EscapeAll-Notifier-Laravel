@@ -98,6 +98,23 @@
         .stat-label{color:var(--muted)}
         .stat .icon{font-size:.9rem}
 
+        /* ── Pagination ── */
+        .pagination{
+            display:flex; align-items:center; justify-content:center; gap:.4rem;
+            margin-top:2rem; flex-wrap:wrap;
+        }
+        .page-btn{
+            min-width:36px; height:36px; padding:0 .65rem; border-radius:10px;
+            border:1px solid var(--glass-border); background:var(--glass);
+            color:var(--muted); font-size:.85rem; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:all .2s; font-family:inherit;
+        }
+        .page-btn:hover:not(:disabled){background:rgba(96,165,250,.15); border-color:rgba(96,165,250,.3); color:#fff}
+        .page-btn.active{background:rgba(96,165,250,.25); border-color:rgba(96,165,250,.5); color:#fff; font-weight:700}
+        .page-btn:disabled{opacity:.35; cursor:default}
+        .page-ellipsis{color:var(--muted); font-size:.85rem; padding:0 .3rem; line-height:36px}
+
         @media(max-width:640px){
             .company-grid{grid-template-columns:1fr}
             .container{padding:1.5rem 1rem}
@@ -161,24 +178,77 @@
             </a>
         @endforeach
     </div>
+
+    <div class="pagination" id="co-pagination"></div>
 </div>
 
 <script>
 (function(){
-    const q = document.getElementById('q');
-    const cards = Array.from(document.querySelectorAll('.company-card'));
+    const q       = document.getElementById('q');
+    const allCards = Array.from(document.querySelectorAll('.company-card'));
     const countEl = document.getElementById('count');
+    const grid    = document.getElementById('grid');
 
-    function filter(){
+    const PAGE_SIZE = 18;
+    let currentPage = 1;
+    let lastFiltered = [];
+
+    function filter() {
         const s = (q.value||'').toLowerCase().trim();
-        let visible = 0;
-        cards.forEach(c => {
-            const match = !s || (c.dataset.name||'').includes(s) || (c.dataset.address||'').includes(s);
-            c.style.display = match ? '' : 'none';
-            if(match) visible++;
-        });
-        countEl.textContent = `${visible} / ${cards.length}`;
+        const filtered = allCards.filter(c =>
+            !s || (c.dataset.name||'').includes(s) || (c.dataset.address||'').includes(s)
+        );
+        countEl.textContent = `${filtered.length} / ${allCards.length}`;
+        currentPage = 1;
+        renderPage(filtered);
     }
+
+    function renderPage(filtered) {
+        lastFiltered = filtered;
+        const total      = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        currentPage      = Math.min(currentPage, totalPages);
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end   = start + PAGE_SIZE;
+
+        allCards.forEach(c => c.style.display = 'none');
+        filtered.forEach((c, i) => {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+            grid.appendChild(c);
+        });
+
+        buildPagination(totalPages);
+    }
+
+    window.coGoToPage = function(page) {
+        currentPage = page;
+        renderPage(lastFiltered);
+        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function buildPagination(totalPages) {
+        const pag = document.getElementById('co-pagination');
+        if (!pag) return;
+        if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+        const btn = (label, page, disabled, active) =>
+            `<button class="page-btn${active?' active':''}" onclick="coGoToPage(${page})"${disabled?' disabled':''}>${label}</button>`;
+
+        let html = btn('&lsaquo;', currentPage - 1, currentPage === 1, false);
+        const delta = 2;
+        let prev = null;
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentPage - delta && p <= currentPage + delta)) {
+                if (prev !== null && p - prev > 1) html += '<span class="page-ellipsis">&hellip;</span>';
+                html += btn(p, p, false, p === currentPage);
+                prev = p;
+            }
+        }
+        html += btn('&rsaquo;', currentPage + 1, currentPage === totalPages, false);
+        pag.innerHTML = html;
+    }
+
     q.addEventListener('input', filter);
     filter();
 })();

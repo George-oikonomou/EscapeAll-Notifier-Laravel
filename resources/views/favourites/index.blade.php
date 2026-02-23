@@ -211,6 +211,23 @@
         /* ── Hidden card animation ── */
         .room-card.hidden{display:none}
 
+        /* ── Pagination ── */
+        .pagination{
+            display:flex; align-items:center; justify-content:center; gap:.4rem;
+            margin-top:2rem; flex-wrap:wrap;
+        }
+        .page-btn{
+            min-width:36px; height:36px; padding:0 .65rem; border-radius:10px;
+            border:1px solid var(--glass-border); background:var(--glass);
+            color:var(--muted); font-size:.85rem; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:all .2s; font-family:inherit;
+        }
+        .page-btn:hover:not(:disabled){background:rgba(96,165,250,.15); border-color:rgba(96,165,250,.3); color:#fff}
+        .page-btn.active{background:rgba(96,165,250,.25); border-color:rgba(96,165,250,.5); color:#fff; font-weight:700}
+        .page-btn:disabled{opacity:.35; cursor:default}
+        .page-ellipsis{color:var(--muted); font-size:.85rem; padding:0 .3rem; line-height:36px}
+
         @media(max-width:640px){
             .container{padding:1.25rem 1rem}
             .topnav{padding:.8rem 1rem; gap:1rem}
@@ -367,6 +384,8 @@
             <h2 class="empty-title">No rooms found</h2>
             <p class="empty-text">Try a different search</p>
         </div>
+
+        <div class="pagination" id="fav-pagination"></div>
     @endif
 </div>
 
@@ -410,40 +429,92 @@ function recount() {
     if (grid.querySelectorAll('.room-card').length === 0) location.reload();
 }
 
-// Search + sort for favourites
+// Search + sort + pagination for favourites
 (function(){
     const searchInput = document.getElementById('fav-search');
-    const sortSelect = document.getElementById('fav-sort');
-    const grid = document.getElementById('fav-grid');
+    const sortSelect  = document.getElementById('fav-sort');
+    const grid        = document.getElementById('fav-grid');
     if (!searchInput || !grid) return;
-    const cards = Array.from(grid.querySelectorAll('.room-card'));
+    const allCards = Array.from(grid.querySelectorAll('.room-card'));
+
+    const PAGE_SIZE = 12;
+    let currentPage = 1;
+    let lastFiltered = [];
 
     function applyFilter() {
-        const q = searchInput.value.toLowerCase().trim();
+        const q      = searchInput.value.toLowerCase().trim();
         const sortBy = sortSelect.value;
 
-        let visible = cards.filter(c => {
-            if (!q) return true;
-            return (c.dataset.title || '').includes(q) || (c.dataset.provider || '').includes(q);
-        });
+        let filtered = allCards.filter(c =>
+            !q || (c.dataset.title||'').includes(q) || (c.dataset.provider||'').includes(q)
+        );
 
-        visible.sort((a, b) => {
-            if (sortBy === 'rating') return (parseFloat(b.dataset.rating)||0) - (parseFloat(a.dataset.rating)||0);
+        filtered.sort((a, b) => {
+            if (sortBy === 'rating')     return (parseFloat(b.dataset.rating)||0)     - (parseFloat(a.dataset.rating)||0);
             if (sortBy === 'difficulty') return (parseFloat(b.dataset.difficulty)||0) - (parseFloat(a.dataset.difficulty)||0);
             return (a.dataset.title||'').localeCompare(b.dataset.title||'');
         });
 
-        cards.forEach(c => c.style.display = 'none');
-        visible.forEach(c => { c.style.display = ''; grid.appendChild(c); });
-
+        // Update count (always full filtered count)
         const countEl = document.getElementById('fav-count');
-        if (countEl) countEl.textContent = `${visible.length} ${visible.length === 1 ? 'room' : 'rooms'}`;
+        if (countEl) countEl.textContent = `${filtered.length} ${filtered.length === 1 ? 'room' : 'rooms'}`;
+
+        currentPage = 1;
+        renderPage(filtered);
+    }
+
+    function renderPage(filtered) {
+        lastFiltered = filtered;
+        const total      = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        currentPage      = Math.min(currentPage, totalPages);
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end   = start + PAGE_SIZE;
+
+        allCards.forEach(c => c.style.display = 'none');
+        filtered.forEach((c, i) => {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+            grid.appendChild(c);
+        });
+
         const emptyEl = document.getElementById('fav-empty');
-        if (emptyEl) emptyEl.style.display = visible.length === 0 ? 'block' : 'none';
+        if (emptyEl) emptyEl.style.display = total === 0 ? 'block' : 'none';
+
+        buildPagination(totalPages);
+    }
+
+    window.favGoToPage = function(page) {
+        currentPage = page;
+        renderPage(lastFiltered);
+        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function buildPagination(totalPages) {
+        const pag = document.getElementById('fav-pagination');
+        if (!pag) return;
+        if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+        const btn = (label, page, disabled, active) =>
+            `<button class="page-btn${active?' active':''}" onclick="favGoToPage(${page})"${disabled?' disabled':''}>${label}</button>`;
+
+        let html = btn('&lsaquo;', currentPage - 1, currentPage === 1, false);
+        const delta = 2;
+        let prev = null;
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentPage - delta && p <= currentPage + delta)) {
+                if (prev !== null && p - prev > 1) html += '<span class="page-ellipsis">&hellip;</span>';
+                html += btn(p, p, false, p === currentPage);
+                prev = p;
+            }
+        }
+        html += btn('&rsaquo;', currentPage + 1, currentPage === totalPages, false);
+        pag.innerHTML = html;
     }
 
     searchInput.addEventListener('input', applyFilter);
     sortSelect.addEventListener('change', applyFilter);
+    applyFilter();
 })();
 </script>
 @include('partials.search-script')

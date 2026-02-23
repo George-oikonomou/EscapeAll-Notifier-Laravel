@@ -108,6 +108,23 @@
             white-space:nowrap;
         }
 
+        /* Pagination */
+        .pagination{
+            display:flex; align-items:center; justify-content:center; gap:.4rem;
+            margin-top:2rem; flex-wrap:wrap;
+        }
+        .page-btn{
+            min-width:36px; height:36px; padding:0 .65rem; border-radius:10px;
+            border:1px solid var(--glass-border); background:var(--glass);
+            color:var(--muted); font-size:.85rem; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:all .2s; font-family:inherit;
+        }
+        .page-btn:hover:not(:disabled){background:rgba(96,165,250,.15); border-color:rgba(96,165,250,.3); color:#fff}
+        .page-btn.active{background:rgba(96,165,250,.25); border-color:rgba(96,165,250,.5); color:#fff; font-weight:700}
+        .page-btn:disabled{opacity:.35; cursor:default}
+        .page-ellipsis{color:var(--muted); font-size:.85rem; padding:0 .3rem; line-height:36px}
+
         /* Cards Grid */
         .cards-grid{
             display:grid;
@@ -486,6 +503,8 @@
         <h2 class="empty-title">No rooms found</h2>
         <p class="empty-text">Try adjusting your search or filters</p>
     </div>
+
+    <div class="pagination" id="pagination"></div>
 </div>
 
 <script>
@@ -570,11 +589,10 @@
             // Location filter
             const matchesLocation = !municipalityId || cardMunicipalityId === municipalityId;
 
-            // Category filter — OR logic: match any selected category
+            // Category filter — AND logic: room must have ALL selected categories
             let matchesCategory = true;
             if (activeCategories.size > 0) {
                 const slugArr = categorySlugs.split(',').filter(Boolean);
-                matchesCategory = false;
                 for (const slug of activeCategories) {
                     const chipEl = document.querySelector(`.filter-chip[data-category="${slug}"]`);
                     const isNeg = chipEl?.dataset.negative === 'true';
@@ -582,16 +600,16 @@
                     const aliases = (chipEl?.dataset.aliases || '').split(',').filter(Boolean);
 
                     if (isNeg && negSlug) {
-                        // Negative: room must NOT have negated category
+                        // Negative: room must NOT have the negated category
                         const greekNames = slugToGreekNames[negSlug] || [];
                         const hasCat = slugArr.includes(negSlug) || greekNames.some(n => categories.includes(n));
-                        if (!hasCat) { matchesCategory = true; break; }
+                        if (hasCat) { matchesCategory = false; break; }
                     } else {
-                        // Positive: room must have this category
+                        // Positive: room MUST have this category
                         let hasCat = slugArr.includes(slug);
                         if (!hasCat && aliases.length) hasCat = aliases.some(a => categories.includes(a));
                         if (!hasCat) { const gn = slugToGreekNames[slug] || []; hasCat = gn.some(n => categories.includes(n)); }
-                        if (hasCat) { matchesCategory = true; break; }
+                        if (!hasCat) { matchesCategory = false; break; }
                     }
                 }
             }
@@ -611,19 +629,68 @@
             }
         });
 
-        // Hide all, show filtered
-        cards.forEach(card => card.style.display = 'none');
-        visibleCards.forEach(card => {
-            card.style.display = '';
-            grid.appendChild(card);
-        });
-
-        // Update count
+        // Count = all matching results (not just current page)
         resultsCount.textContent = `${visibleCards.length} room${visibleCards.length !== 1 ? 's' : ''}`;
 
-        // Show empty state if no results
-        emptyState.style.display = visibleCards.length === 0 ? 'block' : 'none';
-        grid.style.display = visibleCards.length === 0 ? 'none' : 'grid';
+        // Reset to page 1 and render
+        currentPage = 1;
+        renderPage(visibleCards);
+    }
+
+    // ── Pagination ──────────────────────────────────────────────────────
+    const PAGE_SIZE = 24;
+    let currentPage = 1;
+    let lastFiltered = [];
+
+    function renderPage(filteredCards) {
+        lastFiltered = filteredCards;
+        const total = filteredCards.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        currentPage = Math.min(currentPage, totalPages);
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end   = start + PAGE_SIZE;
+
+        cards.forEach(c => c.style.display = 'none');
+        filteredCards.forEach((c, i) => {
+            c.style.display = (i >= start && i < end) ? '' : 'none';
+            grid.appendChild(c);
+        });
+
+        emptyState.style.display = total === 0 ? 'block' : 'none';
+        grid.style.display       = total === 0 ? 'none'  : 'grid';
+
+        buildPagination(totalPages);
+    }
+
+    window.goToPage = function(page) {
+        currentPage = page;
+        renderPage(lastFiltered);
+        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function buildPagination(totalPages) {
+        const pag = document.getElementById('pagination');
+        if (!pag) return;
+        if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+        const btn = (label, page, disabled, active) =>
+            `<button class="page-btn${active?' active':''}" onclick="goToPage(${page})"${disabled?' disabled':''}>${label}</button>`;
+
+        let html = btn('&lsaquo;', currentPage - 1, currentPage === 1, false);
+
+        const delta = 2;
+        let prev = null;
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentPage - delta && p <= currentPage + delta)) {
+                if (prev !== null && p - prev > 1) html += '<span class="page-ellipsis">&hellip;</span>';
+                html += btn(p, p, false, p === currentPage);
+                prev = p;
+            }
+        }
+
+        html += btn('&rsaquo;', currentPage + 1, currentPage === totalPages, false);
+        pag.innerHTML = html;
     }
 
     searchInput.addEventListener('input', filterAndSort);
