@@ -1,6 +1,6 @@
 {{-- Shared nav bar partial for all public pages --}}
 <nav class="topnav">
-    <a href="{{ route('home') }}" class="brand">EscapeAll</a>
+    <a href="{{ route('home') }}" class="brand">EscapeNotifier</a>
     <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Rooms</a>
     <a href="{{ route('companies.index') }}" class="{{ request()->routeIs('companies.*') ? 'active' : '' }}">Companies</a>
     @auth
