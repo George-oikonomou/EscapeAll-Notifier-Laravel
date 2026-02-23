@@ -52,74 +52,125 @@
             padding:.4rem .8rem; border-radius:10px;
             background:var(--glass); border:1px solid var(--glass-border);
         }
+        /* ── Controls bar ── */
+        .controls-bar{
+            display:flex; flex-wrap:wrap; gap:.75rem; align-items:center;
+            margin-bottom:1.25rem; padding:1rem 1.25rem; border-radius:14px;
+            background:var(--glass); border:1px solid var(--glass-border);
+            backdrop-filter:blur(14px);
+        }
+        .search-box{
+            flex:1; min-width:220px; display:flex; align-items:center; gap:.5rem;
+            padding:.55rem .9rem; border-radius:10px;
+            background:rgba(0,0,0,.3); border:1px solid var(--glass-border);
+        }
+        .search-box input{
+            flex:1; background:transparent; border:0; outline:0;
+            color:var(--text); font-size:.9rem; font-family:inherit;
+        }
+        .search-box input::placeholder{color:var(--muted)}
+        .results-label{color:var(--muted); font-size:.85rem; margin-left:auto}
+
         .reminder-list{display:flex; flex-direction:column; gap:1rem}
         .reminder-card{
-            display:flex; gap:1.25rem; padding:1.25rem; border-radius:16px;
+            display:grid;
+            grid-template-columns:150px 1fr auto;
+            border-radius:16px; overflow:hidden;
             background:var(--glass); border:1px solid var(--glass-border);
-            backdrop-filter:blur(14px); transition:border-color .2s;
+            backdrop-filter:blur(14px); transition:border-color .2s, box-shadow .2s;
         }
-        .reminder-card:hover{border-color:rgba(255,255,255,.15)}
+        .reminder-card:hover{
+            border-color:rgba(251,191,36,.2);
+            box-shadow:0 8px 32px rgba(0,0,0,.35);
+        }
         .reminder-image{
-            width:120px; height:90px; border-radius:12px; overflow:hidden; flex-shrink:0;
-            background:rgba(0,0,0,.3);
+            position:relative; height:100%; min-height:110px; overflow:hidden;
+            background:rgba(0,0,0,.3); flex-shrink:0;
         }
-        .reminder-image img{width:100%; height:100%; object-fit:cover}
+        .reminder-image img{width:100%; height:100%; object-fit:cover; transition:transform .4s}
+        .reminder-card:hover .reminder-image img{transform:scale(1.06)}
         .reminder-image-placeholder{
             width:100%; height:100%; display:flex; align-items:center; justify-content:center;
-            font-size:2rem; background:linear-gradient(135deg, rgba(96,165,250,.08), rgba(167,139,250,.08));
+            font-size:2.5rem; background:linear-gradient(135deg, rgba(251,191,36,.08), rgba(167,139,250,.08));
         }
-        .reminder-content{flex:1; min-width:0}
+        .reminder-image-overlay{
+            position:absolute; inset:0;
+            background:linear-gradient(to right, transparent 50%, rgba(5,8,20,.6));
+            pointer-events:none;
+        }
+        .reminder-content{
+            padding:1.1rem 1rem; flex:1; min-width:0; display:flex; flex-direction:column; gap:.4rem;
+        }
         .reminder-title{
-            margin:0 0 .4rem; font-weight:700; font-size:1.1rem; color:#fff;
-            display:flex; align-items:center; gap:.5rem;
+            margin:0; font-weight:700; font-size:1rem; color:#fff;
+            display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
         }
         .reminder-title a{color:inherit; text-decoration:none}
-        .reminder-title a:hover{text-decoration:underline}
+        .reminder-title a:hover{color:var(--accent)}
         .coming-soon-badge{
-            font-size:.7rem; padding:.15rem .5rem; border-radius:6px;
+            font-size:.68rem; padding:.12rem .45rem; border-radius:6px;
             background:rgba(251,191,36,.15); border:1px solid rgba(251,191,36,.3); color:#fbbf24;
         }
-        .reminder-meta{color:var(--muted); font-size:.88rem; margin-bottom:.6rem}
+        .reminder-provider{color:var(--accent); font-size:.82rem; font-weight:500;
+            display:flex; align-items:center; gap:.3rem;}
+        .reminder-location{color:var(--muted); font-size:.8rem;
+            display:flex; align-items:center; gap:.3rem;}
+        .reminder-type-row{display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-top:auto; padding-top:.4rem}
         .reminder-type{
             display:inline-flex; align-items:center; gap:.35rem;
-            font-size:.82rem; padding:.25rem .6rem; border-radius:8px;
+            font-size:.78rem; padding:.22rem .55rem; border-radius:8px;
             background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.2); color:#fcd34d;
         }
-        .reminder-date{color:var(--accent); font-weight:500; margin-left:.5rem}
-        .reminder-actions{display:flex; align-items:center; gap:.5rem; margin-left:auto}
+        .reminder-date-badge{
+            font-size:.78rem; padding:.22rem .55rem; border-radius:8px;
+            background:rgba(96,165,250,.1); border:1px solid rgba(96,165,250,.2); color:#93c5fd;
+        }
+        /* Actions column */
+        .reminder-actions{
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:.5rem; padding:.9rem .85rem;
+            border-left:1px solid var(--glass-border);
+            background:rgba(0,0,0,.12);
+        }
+        .btn-view{
+            display:flex; align-items:center; gap:.35rem;
+            padding:.5rem .8rem; border-radius:10px; font-size:.78rem;
+            background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.25);
+            color:#93c5fd; text-decoration:none; transition:all .2s; white-space:nowrap;
+        }
+        .btn-view:hover{background:rgba(96,165,250,.28)}
         .btn-remove{
-            padding:.5rem .8rem; border-radius:10px; font-size:.82rem;
-            background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.25);
-            color:#fca5a5; cursor:pointer; transition:all .2s;
+            display:flex; align-items:center; gap:.35rem;
+            padding:.5rem .8rem; border-radius:10px; font-size:.78rem;
+            background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.22);
+            color:#fca5a5; cursor:pointer; transition:all .2s; white-space:nowrap;
         }
         .btn-remove:hover{background:rgba(239,68,68,.25)}
-        .btn-view{
-            padding:.5rem .8rem; border-radius:10px; font-size:.82rem;
-            background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.25);
-            color:#93c5fd; text-decoration:none; transition:all .2s;
-        }
-        .btn-view:hover{background:rgba(96,165,250,.25)}
+
         .empty-state{
-            text-align:center; padding:4rem 2rem;
+            text-align:center; padding:5rem 2rem;
             background:var(--glass); border:1px solid var(--glass-border);
             border-radius:18px; backdrop-filter:blur(14px);
         }
-        .empty-icon{font-size:4rem; margin-bottom:1rem; opacity:.5}
+        .empty-icon{font-size:4.5rem; margin-bottom:1rem; animation:emptyPulse 2s ease-in-out infinite}
+        @keyframes emptyPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
         .empty-title{font-size:1.3rem; font-weight:700; color:#fff; margin:0 0 .5rem}
-        .empty-text{color:var(--muted); margin:0 0 1.5rem}
+        .empty-text{color:var(--muted); margin:0 0 1.5rem; font-size:.95rem}
         .empty-btn{
             display:inline-flex; align-items:center; gap:.5rem;
-            padding:.7rem 1.3rem; border-radius:12px;
-            background:var(--accent); color:#0b1020; font-weight:600;
-            text-decoration:none; transition:transform .2s;
+            padding:.7rem 1.4rem; border-radius:12px;
+            background:rgba(251,191,36,.18); border:1px solid rgba(251,191,36,.3);
+            color:#fcd34d; font-weight:600; text-decoration:none; transition:all .2s;
         }
-        .empty-btn:hover{transform:translateY(-2px)}
+        .empty-btn:hover{transform:translateY(-2px); background:rgba(251,191,36,.28)}
+
         @media(max-width:640px){
             .container{padding:1.25rem 1rem}
             .topnav{padding:.8rem 1rem; gap:1rem}
-            .reminder-card{flex-direction:column}
-            .reminder-image{width:100%; height:150px}
-            .reminder-actions{margin-left:0; margin-top:.75rem}
+            .reminder-card{grid-template-columns:1fr; grid-template-rows:150px auto auto}
+            .reminder-image{min-height:150px}
+            .reminder-actions{flex-direction:row; justify-content:flex-start; border-left:none; border-top:1px solid var(--glass-border)}
+            .reminder-image-overlay{background:linear-gradient(to bottom, transparent 50%, rgba(5,8,20,.6))}
         }
     </style>
 </head>
@@ -146,16 +197,26 @@
             <p class="empty-text">Set reminders for rooms you want to book or for upcoming releases!</p>
             <a href="{{ route('home') }}" class="empty-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9,22 9,12 15,12 15,22"/>
+                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.2-4.2"/>
                 </svg>
                 Browse Rooms
             </a>
         </div>
     @else
-        <div class="reminder-list">
+        {{-- Search bar --}}
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.2-4.2"/></svg>
+                <input type="text" id="rem-search" placeholder="Search reminders..." autocomplete="off">
+            </div>
+            <div class="results-label" id="rem-count">{{ $reminders->count() }} {{ Str::plural('reminder', $reminders->count()) }}</div>
+        </div>
+
+        <div class="reminder-list" id="rem-list">
             @foreach($reminders as $reminder)
-                <div class="reminder-card" id="reminder-{{ $reminder->id }}">
+                <div class="reminder-card" id="reminder-{{ $reminder->id }}"
+                     data-title="{{ strtolower($reminder->room->title) }}"
+                     data-provider="{{ strtolower($reminder->room->provider) }}">
                     <div class="reminder-image">
                         @if($reminder->room->image_url)
                             <img src="{{ Str::startsWith($reminder->room->image_url, 'http') ? $reminder->room->image_url : 'https://www.escapeall.gr' . $reminder->room->image_url }}"
@@ -163,6 +224,7 @@
                         @else
                             <div class="reminder-image-placeholder">🔐</div>
                         @endif
+                        <div class="reminder-image-overlay"></div>
                     </div>
                     <div class="reminder-content">
                         <h3 class="reminder-title">
@@ -171,28 +233,45 @@
                                 <span class="coming-soon-badge">Coming Soon</span>
                             @endif
                         </h3>
-                        <div class="reminder-meta">
+                        <div class="reminder-provider">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M9 21V8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v13"/></svg>
                             {{ $reminder->room->provider }}
-                            @if($reminder->room->municipality)
-                                • {{ $reminder->room->municipality->name }}
-                            @endif
                         </div>
-                        <div class="reminder-type">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                            </svg>
-                            {{ $reminder->type_label }}
+                        @if($reminder->room->municipality)
+                            <div class="reminder-location">
+                                📍 {{ $reminder->room->municipality->name }}
+                            </div>
+                        @endif
+                        <div class="reminder-type-row">
+                            <span class="reminder-type">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                </svg>
+                                {{ $reminder->type_label }}
+                            </span>
                             @if($reminder->type === 'specific_day' && $reminder->remind_at)
-                                <span class="reminder-date">{{ $reminder->remind_at->format('M j, Y') }}</span>
+                                <span class="reminder-date-badge">📅 {{ $reminder->remind_at->format('M j, Y') }}</span>
                             @endif
                         </div>
                     </div>
                     <div class="reminder-actions">
-                        <a href="{{ route('rooms.show', $reminder->room) }}" class="btn-view">View Room</a>
-                        <button class="btn-remove" onclick="removeReminder({{ $reminder->room->id }}, {{ $reminder->id }})">Remove</button>
+                        <a href="{{ route('rooms.show', $reminder->room) }}" class="btn-view">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View
+                        </a>
+                        <button class="btn-remove" onclick="removeReminder({{ $reminder->room->id }}, {{ $reminder->id }})">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                            Remove
+                        </button>
                     </div>
                 </div>
             @endforeach
+        </div>
+
+        <div class="empty-state" id="rem-empty" style="display:none; margin-top:1.5rem">
+            <div class="empty-icon" style="animation:none;opacity:.5">🔍</div>
+            <h2 class="empty-title">No reminders found</h2>
+            <p class="empty-text">Try a different search</p>
         </div>
     @endif
 </div>
@@ -215,19 +294,41 @@ async function removeReminder(roomId, reminderId) {
             const card = document.getElementById(`reminder-${reminderId}`);
             card.style.transition = 'opacity .3s, transform .3s';
             card.style.opacity = '0';
-            card.style.transform = 'translateX(20px)';
+            card.style.transform = 'translateX(16px)';
             setTimeout(() => {
                 card.remove();
-                const countEl = document.querySelector('.page-count');
-                const currentCount = parseInt(countEl.textContent) - 1;
-                countEl.textContent = `${currentCount} ${currentCount === 1 ? 'reminder' : 'reminders'}`;
-                if (currentCount === 0) location.reload();
+                const all = document.querySelectorAll('.reminder-card');
+                const countEl = document.getElementById('rem-count');
+                if (countEl) countEl.textContent = `${all.length} ${all.length === 1 ? 'reminder' : 'reminders'}`;
+                if (all.length === 0) location.reload();
             }, 300);
         }
     } catch (error) {
         console.error('Error removing reminder:', error);
     }
 }
+
+// Search
+(function() {
+    const searchInput = document.getElementById('rem-search');
+    const list = document.getElementById('rem-list');
+    if (!searchInput || !list) return;
+    const cards = Array.from(list.querySelectorAll('.reminder-card'));
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value.toLowerCase().trim();
+        let visible = 0;
+        cards.forEach(c => {
+            const match = !q || (c.dataset.title||'').includes(q) || (c.dataset.provider||'').includes(q);
+            c.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        const countEl = document.getElementById('rem-count');
+        if (countEl) countEl.textContent = `${visible} ${visible === 1 ? 'reminder' : 'reminders'}`;
+        const emptyEl = document.getElementById('rem-empty');
+        if (emptyEl) emptyEl.style.display = visible === 0 ? 'block' : 'none';
+    });
+})();
 </script>
 @include('partials.search-script')
 </body>

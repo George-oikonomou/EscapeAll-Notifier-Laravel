@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>EscapeAll Notifier</title>
+    <title>Escape Notifier</title>
     <link rel="icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,11 +85,21 @@
         .filter-chip{
             padding:.4rem .75rem; border-radius:20px; font-size:.8rem;
             background:rgba(96,165,250,.08); border:1px solid rgba(96,165,250,.15);
-            color:#93c5fd; cursor:pointer; transition:all .2s;
-            white-space:nowrap;
+            color:#93c5fd; cursor:pointer; transition:all .2s; user-select:none;
+            white-space:nowrap; display:flex; align-items:center; gap:.3rem;
         }
-        .filter-chip:hover{background:rgba(96,165,250,.18); border-color:rgba(96,165,250,.3)}
-        .filter-chip.active{background:rgba(96,165,250,.3); border-color:rgba(96,165,250,.5); color:#fff; font-weight:600}
+        .filter-chip:hover{background:rgba(96,165,250,.18); border-color:rgba(96,165,250,.3); transform:translateY(-1px)}
+        .filter-chip.active{background:rgba(96,165,250,.28); border-color:rgba(96,165,250,.55); color:#fff; font-weight:600; box-shadow:0 0 10px rgba(96,165,250,.18)}
+        .filter-chip.active::after{content:'×'; font-size:.85rem; opacity:.7; margin-left:.1rem}
+        .filter-chip.all-chip.active::after{content:''}
+        .filter-chips-clear{
+            padding:.4rem .75rem; border-radius:20px; font-size:.78rem;
+            background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.2);
+            color:#fca5a5; cursor:pointer; transition:all .2s; white-space:nowrap;
+            display:none; align-items:center; gap:.3rem;
+        }
+        .filter-chips-clear.visible{display:flex}
+        .filter-chips-clear:hover{background:rgba(239,68,68,.22); border-color:rgba(239,68,68,.4)}
 
         .results-count{
             color:var(--muted); font-size:.85rem;
@@ -330,7 +340,7 @@
     </div>
 
     <div class="filter-chips" id="category-filters">
-        <div class="filter-chip active" data-category="" data-negative="false" data-negates="" onclick="toggleCategory(this)">🎯 All</div>
+        <div class="filter-chip all-chip active" data-category="" data-negative="false" data-negates="" onclick="toggleCategory(this)">🎯 All</div>
         @foreach($categories as $cat)
             <div class="filter-chip"
                  data-category="{{ $cat['slug'] }}"
@@ -342,6 +352,7 @@
                 {{ $cat['emoji'] }} {{ $cat['name'] }}
             </div>
         @endforeach
+        <div class="filter-chips-clear" id="cat-clear-btn" onclick="clearCategories()">✕ Clear</div>
     </div>
 
     <div class="cards-grid" id="rooms-grid" style="margin-top:1.5rem">
@@ -488,23 +499,46 @@
     const cards = Array.from(document.querySelectorAll('.room-card'));
     const categoryChips = document.querySelectorAll('.filter-chip');
 
-    let activeCategory = '';
-    let isNegativeFilter = false;
-    let negatesSlug = '';
-    let categoryAliases = [];
+    // Multi-select category state — Set of active slugs
+    const activeCategories = new Set(); // empty = show all
+    const allChip = document.querySelector('.all-chip');
+    const catClearBtn = document.getElementById('cat-clear-btn');
 
-    window.toggleCategory = function(chip) {
+    window.clearCategories = function() {
+        activeCategories.clear();
         categoryChips.forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        activeCategory = chip.dataset.category || '';
-        isNegativeFilter = chip.dataset.negative === 'true';
-        negatesSlug = chip.dataset.negates || '';
-        categoryAliases = (chip.dataset.aliases || '').split(',').filter(a => a);
+        allChip?.classList.add('active');
+        catClearBtn?.classList.remove('visible');
         filterAndSort();
     };
 
-    // Set "All" as active by default
-    categoryChips[0]?.classList.add('active');
+    window.toggleCategory = function(chip) {
+        const slug = chip.dataset.category || '';
+
+        if (slug === '') {
+            // "All" chip: clear everything
+            clearCategories();
+            return;
+        }
+
+        if (activeCategories.has(slug)) {
+            activeCategories.delete(slug);
+            chip.classList.remove('active');
+        } else {
+            activeCategories.add(slug);
+            chip.classList.add('active');
+            allChip?.classList.remove('active');
+        }
+
+        if (activeCategories.size === 0) {
+            allChip?.classList.add('active');
+            catClearBtn?.classList.remove('visible');
+        } else {
+            catClearBtn?.classList.add('visible');
+        }
+
+        filterAndSort();
+    };
 
     // Build a map of slug -> Greek names for negative filtering
     const slugToGreekNames = {
@@ -536,32 +570,29 @@
             // Location filter
             const matchesLocation = !municipalityId || cardMunicipalityId === municipalityId;
 
-            // Category filter
+            // Category filter — OR logic: match any selected category
             let matchesCategory = true;
-            if (activeCategory) {
-                if (isNegativeFilter && negatesSlug) {
-                    // Negative filter: show rooms that DON'T have the negated category
-                    const greekNames = slugToGreekNames[negatesSlug] || [];
-                    const hasCat = categorySlugs.split(',').includes(negatesSlug) ||
-                                   greekNames.some(name => categories.includes(name));
-                    matchesCategory = !hasCat;
-                } else {
-                    // Positive filter: show rooms that HAVE this category
-                    // Check by slug first
-                    let hasCat = categorySlugs.split(',').includes(activeCategory);
+            if (activeCategories.size > 0) {
+                const slugArr = categorySlugs.split(',').filter(Boolean);
+                matchesCategory = false;
+                for (const slug of activeCategories) {
+                    const chipEl = document.querySelector(`.filter-chip[data-category="${slug}"]`);
+                    const isNeg = chipEl?.dataset.negative === 'true';
+                    const negSlug = chipEl?.dataset.negates || '';
+                    const aliases = (chipEl?.dataset.aliases || '').split(',').filter(Boolean);
 
-                    // If not found by slug, check by aliases in Greek names
-                    if (!hasCat && categoryAliases.length > 0) {
-                        hasCat = categoryAliases.some(alias => categories.includes(alias.toLowerCase()));
+                    if (isNeg && negSlug) {
+                        // Negative: room must NOT have negated category
+                        const greekNames = slugToGreekNames[negSlug] || [];
+                        const hasCat = slugArr.includes(negSlug) || greekNames.some(n => categories.includes(n));
+                        if (!hasCat) { matchesCategory = true; break; }
+                    } else {
+                        // Positive: room must have this category
+                        let hasCat = slugArr.includes(slug);
+                        if (!hasCat && aliases.length) hasCat = aliases.some(a => categories.includes(a));
+                        if (!hasCat) { const gn = slugToGreekNames[slug] || []; hasCat = gn.some(n => categories.includes(n)); }
+                        if (hasCat) { matchesCategory = true; break; }
                     }
-
-                    // Also check slugToGreekNames for this category
-                    if (!hasCat) {
-                        const greekNames = slugToGreekNames[activeCategory] || [];
-                        hasCat = greekNames.some(name => categories.includes(name));
-                    }
-
-                    matchesCategory = hasCat;
                 }
             }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Companies • EscapeAll Notifier</title>
+    <title>Companies • Escape Notifier</title>
     <meta name="description" content="Browse all escape room companies in Attica. Find locations, ratings, and rooms.">
     <link rel="icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">

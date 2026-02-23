@@ -120,7 +120,7 @@
         </div>
 
         <div class="footer">
-            &copy; {{ date('Y') }} EscapeAll Notifier
+            &copy; {{ date('Y') }} Escape Notifier
         </div>
     </div>
 </body>

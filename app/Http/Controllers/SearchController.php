@@ -14,7 +14,7 @@ class SearchController extends Controller
      */
     public function search(Request $request)
     {
-        $query = trim($request->input('q', ''));
+        $query = strtolower(trim($request->input('q', '')));
 
         if (strlen($query) < 2) {
             return response()->json([
@@ -25,10 +25,10 @@ class SearchController extends Controller
 
         // Search rooms
         $rooms = Room::where(function ($q) use ($query) {
-                $q->where('title', 'LIKE', "%{$query}%")
-                  ->orWhere('label', 'LIKE', "%{$query}%")
-                  ->orWhere('provider', 'LIKE', "%{$query}%")
-                  ->orWhere('short_description', 'LIKE', "%{$query}%");
+                $q->whereRaw('LOWER(title) LIKE ?', ["%{$query}%"])
+                  ->orWhereRaw('LOWER(label) LIKE ?', ["%{$query}%"])
+                  ->orWhereRaw('LOWER(provider) LIKE ?', ["%{$query}%"])
+                  ->orWhereRaw('LOWER(short_description) LIKE ?', ["%{$query}%"]);
             })
             ->with('company:id,name')
             ->select('id', 'title', 'provider', 'image_url', 'rating', 'reviews_count', 'min_players', 'max_players', 'company_id')
@@ -50,10 +50,9 @@ class SearchController extends Controller
 
         // Search companies
         $companies = Company::where(function ($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-
-                  ->orWhere('address', 'LIKE', "%{$query}%")
-                  ->orWhere('full_address', 'LIKE', "%{$query}%");
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$query}%"])
+                  ->orWhereRaw('LOWER(address) LIKE ?', ["%{$query}%"])
+                  ->orWhereRaw('LOWER(full_address) LIKE ?', ["%{$query}%"]);
             })
             ->has('rooms')
             ->withCount('rooms')

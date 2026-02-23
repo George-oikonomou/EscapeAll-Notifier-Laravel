@@ -264,11 +264,22 @@
             color:#fff; cursor:pointer; background:rgba(96,165,250,.08);
             border-color:rgba(96,165,250,.15);
         }
-        .cal-day.has-slots::after{
-            content:""; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);
+        .cal-dots{
+            position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+            display:flex; align-items:center; gap:2px;
+        }
+        .cal-dot{
             width:5px; height:5px; border-radius:50%;
-            background:var(--accent); box-shadow:0 0 6px rgba(96,165,250,.6);
+            background:var(--accent); box-shadow:0 0 5px rgba(96,165,250,.6);
             animation:calPulse 2s ease-in-out infinite;
+        }
+        .cal-dot:nth-child(2){animation-delay:.3s}
+        .cal-dot:nth-child(3){animation-delay:.6s}
+        .cal-dot:nth-child(4){animation-delay:.9s}
+        .cal-dot:nth-child(5){animation-delay:1.2s}
+        .cal-dots-more{
+            font-size:.5rem; color:var(--accent); font-weight:700;
+            line-height:1; margin-left:1px;
         }
         .cal-day.has-slots:hover{
             background:rgba(96,165,250,.2); border-color:rgba(96,165,250,.4);
@@ -279,7 +290,7 @@
             border-color:rgba(96,165,250,.4); color:#fff; font-weight:700;
             box-shadow:0 0 20px rgba(96,165,250,.15);
         }
-        .cal-day.selected::after{display:none}
+        .cal-day.selected .cal-dots{display:none}
         @keyframes calPulse{
             0%,100%{opacity:1; transform:translateX(-50%) scale(1)}
             50%{opacity:.4; transform:translateX(-50%) scale(1.3)}
@@ -909,7 +920,24 @@ async function toggleReminder(roomId) {
 
             if (data[dateStr] && data[dateStr].length > 0) {
                 cell.classList.add('has-slots');
-                cell.title = data[dateStr].length + ' slot(s) available';
+                const slotCount = data[dateStr].length;
+                cell.title = slotCount + ' slot(s) available';
+                // Inject dot indicators
+                const dotsWrap = document.createElement('div');
+                dotsWrap.className = 'cal-dots';
+                const visibleDots = Math.min(slotCount, 5);
+                for (let i = 0; i < visibleDots; i++) {
+                    const dot = document.createElement('span');
+                    dot.className = 'cal-dot';
+                    dotsWrap.appendChild(dot);
+                }
+                if (slotCount > 5) {
+                    const more = document.createElement('span');
+                    more.className = 'cal-dots-more';
+                    more.textContent = '+' + (slotCount - 5);
+                    dotsWrap.appendChild(more);
+                }
+                cell.appendChild(dotsWrap);
                 cell.addEventListener('click', () => selectDay(dateStr, data[dateStr], cell));
             }
 

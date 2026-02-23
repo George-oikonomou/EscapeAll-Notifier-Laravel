@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $company->name }} • EscapeAll</title>
+    <title>{{ $company->name }} • EscapeNotifier</title>
     <meta name="description" content="{{ $company->name }} — {{ $totalRooms }} escape rooms at {{ $company->address }}">
     <link rel="icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">

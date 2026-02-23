@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'EscapeAll') }}</title>
+        <title>{{ config('app.name', 'EscapeNotifier') }}</title>
 
         <link rel="icon" href="/favicon.ico">
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -148,7 +148,7 @@
     </head>
     <body>
         <nav class="ea-topnav">
-            <a href="{{ route('home') }}" class="brand">EscapeAll</a>
+            <a href="{{ route('home') }}" class="brand">EscapeNotifier</a>
             <a href="{{ route('home') }}">Rooms</a>
             <a href="{{ route('companies.index') }}">Companies</a>
 
