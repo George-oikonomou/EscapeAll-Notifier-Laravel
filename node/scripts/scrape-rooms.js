@@ -31,6 +31,9 @@ const format = args.format || 'json';
 const webhookUrl    = args.webhookUrl    || '';
 const webhookSecret = args.webhookSecret || '';
 
+// One room card on the listing page (EscapeAll redesign, Oct 2026).
+const CARD_SELECTOR = 'article.ea-result';
+
 (async () => {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
@@ -47,9 +50,9 @@ const webhookSecret = args.webhookSecret || '';
     let stableRounds = 0;
     const maxScrollAttempts = 120;
     for (let i = 0; i < maxScrollAttempts; i++) {
-        const currentCount = await page.evaluate(() =>
-            document.querySelectorAll('.panel-body > .row.service').length
-        );
+        const currentCount = await page.evaluate((sel) =>
+            document.querySelectorAll(sel).length
+        , CARD_SELECTOR);
         console.error(`[fetch-rooms] Scroll #${i + 1}: ${currentCount} rooms loaded`);
         if (currentCount === previousCount) {
             stableRounds++;
@@ -87,9 +90,9 @@ const webhookSecret = args.webhookSecret || '';
     console.error(`[fetch-rooms] Built slug→serviceId map: ${Object.keys(slugToServiceId).length} entries`);
 
     // ── Extract all room data from cards ──
-    const rooms = await page.evaluate(() => {
+    const rooms = await page.evaluate((sel) => {
         const results = [];
-        const cards = document.querySelectorAll('.panel-body > .row.service');
+        const cards = document.querySelectorAll(sel);
 
         cards.forEach(card => {
             try {
@@ -101,7 +104,7 @@ const webhookSecret = args.webhookSecret || '';
                 }
 
                 // --- Title and slug ---
-                const titleLink = card.querySelector('h4 a');
+                const titleLink = card.querySelector('.ea-result-title a');
                 const title = titleLink ? titleLink.textContent.trim() : '';
                 let slug = '';
                 if (titleLink) {
@@ -128,7 +131,7 @@ const webhookSecret = args.webhookSecret || '';
                 }
 
                 // --- Rating ---
-                const ratingEl = card.querySelector('.compact-rating');
+                const ratingEl = card.querySelector('.ea-result-rating-value');
                 let rating = null;
                 if (ratingEl) {
                     const ratingText = ratingEl.textContent.trim().replace(',', '.');
@@ -136,8 +139,8 @@ const webhookSecret = args.webhookSecret || '';
                     if (!isNaN(parsed)) rating = parsed;
                 }
 
-                // --- Reviews count ---
-                const reviewsEl = card.querySelector('.reviews');
+                // --- Reviews count (sibling .ea-result-top-list is the "Top List" count, not reviews) ---
+                const reviewsEl = card.querySelector('.ea-result-rating-count > span:not(.ea-result-top-list)');
                 let reviewsCount = null;
                 if (reviewsEl) {
                     const m = reviewsEl.textContent.trim().match(/(\d+)/);
@@ -145,7 +148,7 @@ const webhookSecret = args.webhookSecret || '';
                 }
 
                 // --- Short description ---
-                const descEl = card.querySelector('.short-description');
+                const descEl = card.querySelector('.ea-result-description');
                 const shortDescription = descEl ? descEl.textContent.trim() : '';
 
                 // --- Categories from service-icons ---
@@ -164,19 +167,23 @@ const webhookSecret = args.webhookSecret || '';
                 }
 
                 // --- Duration, Players, Escape Rate ---
-                const statCols = card.querySelectorAll('.time-players-escape-time .col-xs-4');
+                // Facts are <li>s identified by icon; the escape-rate one is omitted for some rooms.
+                const factText = (icon) => {
+                    const li = card.querySelector(`.ea-result-facts li:has(> i.${icon})`);
+                    return li ? li.textContent.trim() : '';
+                };
                 let durationMinutes = null;
                 let minPlayers = null;
                 let maxPlayers = null;
                 let escapeRate = null;
 
-                if (statCols.length >= 1) {
-                    const durText = statCols[0].textContent.trim();
+                const durText = factText('fa-clock-o');
+                if (durText) {
                     const durMatch = durText.match(/(\d+)/);
                     if (durMatch) durationMinutes = parseInt(durMatch[1], 10);
                 }
-                if (statCols.length >= 2) {
-                    const playersText = statCols[1].textContent.trim();
+                const playersText = factText('fa-user');
+                if (playersText) {
                     const playersMatch = playersText.match(/(\d+)\s*-\s*(\d+)/);
                     if (playersMatch) {
                         minPlayers = parseInt(playersMatch[1], 10);
@@ -189,8 +196,8 @@ const webhookSecret = args.webhookSecret || '';
                         }
                     }
                 }
-                if (statCols.length >= 3) {
-                    const escText = statCols[2].textContent.trim().replace(',', '.');
+                const escText = factText('fa-sign-out').replace(',', '.');
+                if (escText) {
                     const escMatch = escText.match(/([\d.]+)/);
                     if (escMatch) escapeRate = parseFloat(escMatch[1]);
                 }
@@ -208,8 +215,8 @@ const webhookSecret = args.webhookSecret || '';
                 }
 
                 // --- Company link text ---
-                const companyLink = card.querySelector('a.company');
-                const companyLinkText = companyLink ? companyLink.querySelector('span')?.textContent.trim() : '';
+                const companyLink = card.querySelector('a.ea-result-company');
+                const companyLinkText = companyLink ? companyLink.textContent.trim() : '';
 
                 if (slug) {
                     results.push({
@@ -237,7 +244,7 @@ const webhookSecret = args.webhookSecret || '';
         });
 
         return results;
-    });
+    }, CARD_SELECTOR);
 
     console.error(`[fetch-rooms] Extracted ${rooms.length} rooms (from cards)`);
 
@@ -269,6 +276,12 @@ const webhookSecret = args.webhookSecret || '';
     }
     if (format === 'json') {
         process.stdout.write(output);
+    }
+
+    if (rooms.length === 0) {
+        console.error(`[fetch-rooms] ERROR: no room cards matched "${CARD_SELECTOR}" — EscapeAll layout probably changed. Not POSTing.`);
+        process.exitCode = 1;
+        return;
     }
 
     /* ─────────────── Webhook POST (GitHub Actions mode) ─────────── */
